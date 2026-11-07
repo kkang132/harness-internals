@@ -1,0 +1,30 @@
+{
+  "name": "harness-internals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A chatbot agent harness with nothing hidden: raw Claude API calls, three tools around a mock subscription API, and a small pass^k eval.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "check": "biome check . && tsc --noEmit && vitest run",
+    "demo": "tsx scripts/demo.ts",
+    "tokens": "tsx scripts/tokens.ts",
+    "eval": "tsx scripts/eval.ts",
+    "viewer:beats": "python3 viewer/build_beats.py",
+    "viewer": "python3 viewer/build_html.py"
+  },
+  "comment": "No runtime dependencies on purpose: the harness talks to the Claude API with fetch. Dev dependencies are pinned exact; install with `npm ci`.",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "26.6.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12"
+  }
+}

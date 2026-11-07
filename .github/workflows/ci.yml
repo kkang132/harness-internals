@@ -1,0 +1,72 @@
+# Continuous integration for harness-internals.
+#
+# What this is: the deterministic, no-model checks, run on a clean machine for every pull
+# request and after merge to main.
+#
+# Why only these: the demo and the eval call a paid model. CI runs what is reproducible
+# anywhere: lint, typecheck, unit tests, and the AGENTS.md proofs.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # biome lint + tsc typecheck + vitest unit tests.
+      - name: Check
+        run: npm run check
+
+      # Proof: only tools.ts talks to the customer system.
+      - name: Proof - no bypass of the tool layer
+        run: |
+          if grep -rln "/v1/customers" src/harness | grep -v "src/harness/tools.ts"; then
+            echo "BYPASS: something other than tools.ts calls the customer system"
+            exit 1
+          fi
+          echo "ok: one path to the customer system"
+
+      # Proof: nothing local or secret is tracked by git.
+      - name: Proof - nothing secret tracked
+        run: |
+          if git ls-files | grep -E "^results/|(^|/)\.env$"; then
+            echo "TRACKED: remove it"
+            exit 1
+          fi
+          echo "ok: nothing secret tracked"
+
+      # Proof: the viewer names no model vendor.
+      - name: Proof - viewer is vendor-neutral
+        run: |
+          if grep -iE "claude|anthropic|opus|sonnet|haiku" viewer/index.html viewer/beats.json; then
+            echo "NAMED: the viewer must say 'model API' and LLM_1"
+            exit 1
+          fi
+          echo "ok: viewer is vendor-neutral"
+
+      # Proof: the viewer builds from the committed beats.json.
+      - name: Proof - viewer builds
+        run: python3 viewer/build_html.py
+
+      # Proof: no em-dashes anywhere in prose or code.
+      - name: Proof - no em-dashes
+        run: |
+          if grep -rln $'—' --include='*.md' --include='*.ts' --include='*.html' --include='*.py' . --exclude-dir=node_modules; then
+            echo "EM-DASH: rewrite without it"
+            exit 1
+          fi
+          echo "ok: no em-dashes"
