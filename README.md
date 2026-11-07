@@ -4,7 +4,7 @@ An agent is a Large Language Model (LLM) inside of a code loop. This project dem
 
 The harness here is custom and written in the style of [Pi](https://pi.dev). Every responsibility is written out by hand, traced, and tested.
 
-A step-through viewer, [`viewer/index.html`](./viewer/index.html), replays one recorded conversation one harness step at a time. It makes no model calls.
+**[Open the step-through viewer](https://kkang132.github.io/harness-internals/viewer/)** ([`viewer/index.html`](./viewer/index.html)). It replays one recorded conversation one harness step at a time, and makes no model calls.
 
 ## What this teaches
 
