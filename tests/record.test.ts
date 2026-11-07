@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { CustomerSystem } from "../src/customer-system/server.ts";
-import { type CaseRecord, checkCaseRecord, enforceCaseRecord } from "../src/harness/record.ts";
+import { type CaseRecord, checkCaseRecord, enforceCaseRecord, parseJsonObject } from "../src/harness/record.ts";
 import { newSession } from "../src/harness/session.ts";
 
 const note = (over: Partial<CaseRecord> = {}): CaseRecord => ({
@@ -42,8 +42,27 @@ describe("checkCaseRecord", () => {
   });
 });
 
+describe("checkCaseRecord after a hand-off", () => {
+  it("expects outcome 'escalated' when the only event is an escalation", () => {
+    const sys = new CustomerSystem();
+    sys.handle("POST", "/v1/customers/C-1001/escalations", {}, { reason: "customer_upset", summary: "Charged twice." });
+    const ok = checkCaseRecord(
+      note({ customer_id: "C-1001", outcome: "escalated", offer_presented: false }),
+      newSession("C-1001"),
+      sys,
+    );
+    expect(ok.every((c) => c.ok)).toBe(true);
+  });
+});
+
 describe("enforceCaseRecord", () => {
   it("overwrites customer_id from the session", () => {
     expect(enforceCaseRecord(note({ customer_id: "C-9999" }), newSession("C-1002")).customer_id).toBe("C-1002");
+  });
+});
+
+describe("parseJsonObject", () => {
+  it("takes the JSON object out of prose or code fences", () => {
+    expect(parseJsonObject('Here you go:\n```json\n{"a": 1}\n```')).toEqual({ a: 1 });
   });
 });

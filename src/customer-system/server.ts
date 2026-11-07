@@ -13,6 +13,7 @@ import {
   type Account,
   CANCEL_REASONS,
   type CancelReason,
+  ESCALATION_REASONS,
   FEATURES,
   type Feature,
   type Offer,
@@ -34,6 +35,7 @@ export type SystemEvent =
   | { seq: number; type: "offer_accepted"; customer_id: string; offer_id: string }
   | { seq: number; type: "cancelled"; customer_id: string; reason: CancelReason; idempotency_key: string }
   | { seq: number; type: "idempotent_replay"; customer_id: string; idempotency_key: string }
+  | { seq: number; type: "escalated"; customer_id: string; ticket_id: string; reason: string }
   | { seq: number; type: "rejected"; customer_id: string; route: string; status: number; error: string };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -45,6 +47,7 @@ export class CustomerSystem {
   readonly offers = new Map<string, Offer>();
   readonly events: SystemEvent[] = [];
   private readonly idempotency = new Map<string, StoredResponse>();
+  private readonly escalations = new Map<string, Record<string, unknown>>();
   private seq = 0;
   private offerSeq = 0;
   private cancelSeq = 0;
@@ -137,6 +140,28 @@ export class CustomerSystem {
         status: 200,
         body: { confirmation_id: `CH-${this.offerSeq}`, offer, account: this.view(account) },
       };
+    }
+
+    // POST /v1/customers/:id/escalations  { reason, summary }
+    // One open hand-off per customer: a repeat returns the same ticket rather than a second one.
+    if (method === "POST" && parts[3] === "escalations") {
+      const { reason, summary } = (body ?? {}) as { reason?: string; summary?: string };
+      if (!ESCALATION_REASONS.includes(reason as never)) return this.reject(id, route, 422, "invalid_reason");
+      if (typeof summary !== "string" || summary.trim().length < 10)
+        return this.reject(id, route, 422, "summary_required");
+      const open = this.escalations.get(id);
+      if (open) return { status: 200, body: { ...open, already_open: true } };
+      const ticket = {
+        customer_id: id,
+        ticket_id: `ESC-${this.escalations.size + 1}`,
+        queue: "retention-specialists",
+        expected_wait_minutes: 4,
+        reason,
+        summary: summary.slice(0, 500),
+      };
+      this.escalations.set(id, ticket);
+      this.log({ type: "escalated", customer_id: id, ticket_id: ticket.ticket_id, reason: reason as string });
+      return { status: 201, body: ticket };
     }
 
     // POST /v1/customers/:id/cancellation  { reason }  header Idempotency-Key

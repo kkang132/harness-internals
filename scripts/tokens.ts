@@ -9,21 +9,24 @@
 import { DEFAULT_CONFIG } from "../src/harness/loop.ts";
 import { ALL_SKILLS } from "../src/harness/skills.ts";
 import { TOOL_DEFINITIONS, type ToolName } from "../src/harness/tools.ts";
-import { countTokens } from "../src/llm/model-api.ts";
+import { countTokens, provider } from "../src/llm/model-api.ts";
 
 const model = DEFAULT_CONFIG.agentModel;
 const system = ALL_SKILLS.retention.prompt;
 const messages = [{ role: "user" as const, content: "Hi" }];
-const order: ToolName[] = ["get_plan", "offer_retention", "cancel_subscription"];
+const order: ToolName[] = ["get_plan", "offer_retention", "cancel_subscription", "escalate_to_human"];
 
-console.log(`model ${model}, system prompt = retention skill, one user message "Hi"\n`);
-console.log("tools in request                              input_tokens   added");
+console.log(`model ${model}, system prompt = retention skill, one user message "Hi"`);
+if (provider() !== "anthropic")
+  console.log("(estimated: this provider has no token-counting endpoint; about 4 characters per token)");
+console.log();
+console.log(`${"tools in request".padEnd(68)}input_tokens   added`);
 let prev = await countTokens({ model, system, messages });
-console.log(`${"(none)".padEnd(46)}${String(prev).padStart(12)}`);
+console.log(`${"(none)".padEnd(68)}${String(prev).padStart(12)}`);
 for (let i = 1; i <= order.length; i++) {
   const tools = order.slice(0, i).map((t) => TOOL_DEFINITIONS[t]);
   const n = await countTokens({ model, system, messages, tools });
-  console.log(`${order.slice(0, i).join(", ").padEnd(46)}${String(n).padStart(12)}${`+${n - prev}`.padStart(8)}`);
+  console.log(`${order.slice(0, i).join(", ").padEnd(68)}${String(n).padStart(12)}${`+${n - prev}`.padStart(8)}`);
   prev = n;
 }
 

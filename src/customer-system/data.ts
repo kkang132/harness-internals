@@ -49,6 +49,9 @@ export const CANCEL_REASONS = [
 
 export type CancelReason = (typeof CANCEL_REASONS)[number];
 
+export const ESCALATION_REASONS = ["customer_upset", "asked_for_human", "cannot_resolve", "other"] as const;
+export type EscalationReason = (typeof ESCALATION_REASONS)[number];
+
 export type Account = {
   customer_id: string;
   name: string;

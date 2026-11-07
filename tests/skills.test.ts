@@ -7,9 +7,17 @@ import { selectSkill } from "../src/harness/skills.ts";
 describe("selectSkill", () => {
   it("hides cancel_subscription until an offer is quoted", () => {
     const s = newSession("C-1001");
-    expect(selectSkill("scoped", s).tools).toEqual(["get_plan", "offer_retention"]);
+    expect(selectSkill("scoped", s).tools).toEqual(["get_plan", "offer_retention", "escalate_to_human"]);
     s.quoted_offer = { offer_id: "OF-1", reason: "other" };
     expect(selectSkill("scoped", s).tools).toContain("cancel_subscription");
+  });
+
+  it("offers escalate_to_human in every skill", () => {
+    const s = newSession("C-1001");
+    expect(selectSkill("scoped", s).tools).toContain("escalate_to_human");
+    s.quoted_offer = { offer_id: "OF-1", reason: "other" };
+    expect(selectSkill("scoped", s).tools).toContain("escalate_to_human");
+    expect(selectSkill("flat", newSession("C-1001")).tools).toContain("escalate_to_human");
   });
 
   it("shows every tool from the start in flat mode", () => {

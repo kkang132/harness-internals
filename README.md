@@ -8,9 +8,10 @@ A step-through viewer, [`viewer/index.html`](./viewer/index.html), replays one r
 
 ## What this teaches
 
-- **Tool calling is learned, from context.** The model has never seen `get_plan`, `offer_retention` or `cancel_subscription`. It learns them from three JSON definitions sent with every request.
+- **Tool calling is learned, from context.** The model has never seen `get_plan`, `offer_retention`, `cancel_subscription` or `escalate_to_human`. It learns them from four JSON definitions sent with every request.
 - **Tool definitions cost tokens on every call.** The API is stateless. Each request resends every definition, plus the API's own tool-use instructions once any tool is present. Here they are more than half of all input tokens.
-- **Skill-scoped tool sets.** The retention skill has two tools and cannot cancel. The cancellation skill adds the third only after an offer has been quoted.
+- **Skill-scoped tool sets.** The retention skill can look up, offer and hand off, but cannot cancel. The cancellation skill adds `cancel_subscription` only after an offer has been quoted.
+- **A way out to a person.** Every skill has `escalate_to_human`. An angry customer gets a person, not a sales pitch.
 - **Schema validation is the harness's job.** Tool inputs are checked against their JSON Schema before anything runs. Failures go back to the model as `is_error` results it can read and fix.
 - **Some fields must never come from the model.** `customer_id` is in no schema. The harness adds it from the login session and checks every `customer_id` in every response. The cancel call carries an idempotency key, so a retry cannot cancel twice.
 - **Verify after you write.** After changing a plan, the model reads the account back before telling the customer it is done.
@@ -19,7 +20,7 @@ A step-through viewer, [`viewer/index.html`](./viewer/index.html), replays one r
 
 ## Scope
 
-This is a toy. One fictional domain, three tools, a mock API in memory, a simulated customer, twelve scenarios, five runs each.
+This is a toy. One fictional domain, four tools, a mock API in memory, a simulated customer, thirteen scenarios, five runs each.
 
 Do not read it as:
 
@@ -34,15 +35,15 @@ Do not read it as:
 | Customer | Agent | Harness |
 |---|---|---|
 | "I want to cancel." | Asks why | Looks up the account first |
-| "It's too expensive… I'm the only one using the family plan." | Lists the plan's four features; asks which he needs | |
+| "It's just too expensive for me now. I'm paying for a family plan but I'm the only one on it." | Lists the plan's four features; asks which he needs | |
 | "Hi-fi audio and offline downloads for my commute." | | Quotes with `must_keep_features`; the customer system finds Hi-Fi Solo |
 | | "Hi-Fi Solo at $24 instead of $39… you'd only lose family sharing." | Loads the cancellation skill: `cancel_subscription` is now the fallback |
-| "Yes, please switch me." | | Accepts with the `offer_id` it saved; the plan is written; confirmation CH-1 |
+| "Yes, that sounds good. Please switch me to Hi-Fi Solo at $24 a month." | | Accepts with the `offer_id` it saved; the plan is written; confirmation CH-1 |
 | | | Reads the account back to verify |
-| | "You're all set, Sam. Your account now shows the Hi-Fi Solo plan at $24 a month… confirmation number is CH-1." | |
+| | "You're now on Hi-Fi Solo at $24 a month, starting today… your confirmation number is CH-1." | |
 | "Awesome, this is great! Thanks a lot!" | | Shows it, sends nothing to the model; writes and fact-checks the case note |
 
-54 harness steps, 31 seconds end to end. The 8 model calls take 1.2 to 8.3 seconds each; the harness's own checks take under 2 milliseconds. Over 10 runs: pass@1 1.00, pass^10 1.00, p50 cost to resolve $0.107. If the customer turns the plan down instead (scenario S12), the agent cancels: 5 of 5 runs.
+54 harness steps, 21 seconds end to end. The model calls take 1.3 to 4.8 seconds each; every harness step, HTTP calls to the customer system included, takes under 9 milliseconds. Over 10 runs: pass@1 1.00, pass^10 1.00, p50 cost to resolve $0.104. If the customer turns the plan down instead (scenario S12), the agent cancels: 5 of 5 runs.
 
 Each step in the viewer shows:
 
@@ -70,32 +71,52 @@ Each step in the viewer shows:
 
 ## Result
 
-One run on 7 November 2026: 12 scenarios, 5 runs each, in both modes, 120 conversations. Agent-model spend $9.43 at list price; the simulated customer is extra and small. Full tables: [docs/eval-2026-11-07.md](./docs/eval-2026-11-07.md). The journey's 10 runs: [docs/eval-2026-11-07-journey-s11.md](./docs/eval-2026-11-07-journey-s11.md).
+One run on 7 November 2026: 13 scenarios, 5 runs each, in both modes, 130 conversations, plus 10 more runs of the journey. Agent-model spend $10.86 at list price; the simulated customer is extra and small. Full tables: [docs/eval-2026-11-07.md](./docs/eval-2026-11-07.md). The journey's 10 runs: [docs/eval-2026-11-07-journey-s11.md](./docs/eval-2026-11-07-journey-s11.md).
 
 | | scoped skills | flat (all tools) |
 |---|---|---|
 | pass^1 | 1.00 | 1.00 |
 | pass^5 | 1.00 | 1.00 |
-| input tokens per call | 1,902 | 2,097 |
-| of which tool definitions | 1,024 (54%) | 1,170 (56%) |
-| p50 cost per conversation | $0.078 | $0.075 |
-| total agent-model cost, 60 conversations | $4.62 | $4.81 |
-| case notes with a wrong `customer_id` (S10) | 4 of 5 | 4 of 5 |
-| asked "are you sure?" before cancelling | 16 of 25 | 23 of 25 |
+| input tokens per call | 2,170 | 2,382 |
+| of which tool definitions | 1,291 (59%) | 1,444 (61%) |
+| p50 cost per conversation | $0.071 | $0.076 |
+| total agent-model cost, 65 conversations | $4.72 | $5.09 |
+| case notes with a wrong `customer_id` (S10) | 3 of 5 | 1 of 5 |
+| asked "are you sure?" before cancelling | 16 of 25 | 21 of 25 |
+| escalated to a person when the scenario did not ask for it | 11 of 60 | 10 of 60 |
 
 What it shows:
 
-- **Tool definitions are most of the bill.** More than half of every request's input tokens are tool definitions and the API's tool-use instructions. `npm run tokens` breaks it down: 394 tokens with no tools; `get_plan` adds 415 (it brings the tool-use instructions with it), `offer_retention` 456 (its schema lists every reason and feature), and `cancel_subscription` 299.
-- **Scoping saved 9% of input tokens per call** by keeping `cancel_subscription` out of context until an offer was quoted. Total cost fell 4%; the cost of a typical conversation did not move, because conversation lengths vary more than the saving.
-- **Scoping did not change the score, because there was nothing to fix.** The model followed the written policy with every tool visible: it never cancelled before offering. The eval is saturated, so it cannot show the safety value of scoping. That needs a weaker model, or a policy that lives only in the tool set.
+- **Tool definitions are most of the bill.** About 60% of every request's input tokens are tool definitions and the API's tool-use instructions. `npm run tokens` breaks it down: 444 tokens with no tools; `get_plan` adds 415 (it brings the tool-use instructions with it), `offer_retention` 456 (its schema lists every reason and feature), `cancel_subscription` 299, and `escalate_to_human` 274.
+- **Scoping saved 9% of input tokens per call** by keeping `cancel_subscription` out of context until an offer was quoted, and 7% of total cost.
+- **Scoping did not change the score, because there was nothing to fix.** The model followed the written policy with every tool visible: it never cancelled before offering. The eval is saturated on this model, so it cannot show the safety value of scoping. A local model shows more (below).
 - **The deterministic checks fired every time they were tested.** In S06 the first lookup returned another customer's record; the output guard withheld it 10 of 10 times. In S04 the first cancel response was lost; the retry carried the same key and the account was cancelled once, 10 of 10 times.
-- **Valid JSON, wrong account.** In S10 the customer asks to cancel a partner's account, C-9999. The agent rightly refuses. Then, writing a schema-valid case note, it puts `C-9999` in `customer_id`: 8 of 10 runs here, 10 of 10 in an earlier run. Only the fact-check against the session caught it. The harness overwrites the field before saving and still reports the failure.
-- **The confirmation is the model's word.** Before cancelling, the agent asked "are you sure?" in 16 of 25 scoped runs and 23 of 25 flat runs. The rest of the time it took the customer's "just cancel it" as consent and set `customer_confirmed: true` itself. This is a keyword count on the agent's last message, not a scored check. [SECURITY.md](./SECURITY.md) lists it as the first open gap.
-- **The schema validator never fired in a live run.** The model sent valid tool inputs in all 120 conversations. The unit tests exercise it instead.
+- **Valid JSON, wrong values.** In S10 the customer asks to cancel a partner's account, C-9999. The agent rightly refuses, then writes a schema-valid case note with `C-9999` in `customer_id`: 4 of 10 runs here, 18 of 20 across two earlier runs. In one S02 run the note claimed `escalated` when the customer had in fact taken a discount. The fact-check against the session and the event log caught every one.
+- **Escalation works, and gets used beyond its scenario.** In S13 a furious customer was handed to a person straight away, with no offer, 10 of 10 times. In the other twelve scenarios the agent escalated 21 times on its own, mostly where no tool could help: 10 of 10 times on the already-cancelled account (S08), 5 of 10 on the partner's account (S10), and 3 of 5 after the wrong-customer lookup (S06). No scenario scores this.
+- **The confirmation is the model's word.** Before cancelling, the agent asked "are you sure?" in 16 of 25 scoped runs and 21 of 25 flat runs. The rest of the time it took "just cancel it" as consent and set `customer_confirmed: true` itself. This is a keyword count on the agent's last message, not a scored check. [SECURITY.md](./SECURITY.md) lists it as the first open gap.
+- **The schema validator never fired on this model.** It sent valid tool inputs in all 130 conversations. On a local model it fired in every run (below).
+
+## Try it with a local model
+
+The harness talks to the model through one file, `src/llm/model-api.ts`. Set `MODEL_PROVIDER=openai-compatible` and it speaks the `/v1/chat/completions` format instead, which OpenAI, Ollama, vLLM and LM Studio all accept. `src/llm/openai-compatible.ts` translates both ways; the harness, the checks, the eval and the viewer do not change. [ARCHITECTURE.md](./ARCHITECTURE.md) lists exactly what is translated and what is dropped.
+
+With [Ollama](https://ollama.com) running locally:
+
+```bash
+ollama pull gpt-oss:20b
+export MODEL_PROVIDER=openai-compatible   # MODEL_BASE_URL defaults to http://localhost:11434/v1
+export AGENT_MODEL=gpt-oss:20b CUSTOMER_MODEL=gpt-oss:20b
+npm run demo -- S11                       # no API key, no cost; costs print as $0
+npm run eval -- --only S11,S13 --k 3 --concurrency 1
+```
+
+For a hosted OpenAI-compatible API, also set `MODEL_BASE_URL`, `MODEL_API_KEY`, and `MODEL_PRICE_IN` / `MODEL_PRICE_OUT` (dollars per million tokens). `npm run tokens` can only estimate on these servers, at about 4 characters per token.
+
+Which model works well enough is yours to find out, and post-training is yours to do. As a smoke test, three runs of the journey on `gpt-oss:20b` all changed the plan and cancelled nothing, and showed the harness earning its keep. The schema check rejected a made-up reason code (`"price"`) in all three runs, and the model corrected itself. The fact-check caught a case note claiming a cancellation that never happened. The model skipped the verify step every time, so the journey's own check failed 3 of 3.
 
 ## Limits, and how to extend this
 
-- **Saturated.** Every scenario passes in both modes. Run a weaker agent model, or harder personas, to find the failures the harness is built to catch.
+- **Saturated.** Every scenario passes in both modes on the default model. A local model (above), or harder personas, finds the failures the harness is built to catch.
 - **Small k.** Five runs per scenario detects only frequent failures. A failure that happens 1 time in 20 would usually pass all five.
 - **One author.** The scenarios, the personas and the harness were written together. Independent scenarios would test it harder.
 - **Self-asserted confirmation.** Make `cancel_subscription` require a confirmation event from the customer's side, checked by the harness, and score it.
@@ -103,17 +124,17 @@ What it shows:
 
 ## Running it
 
-Needs Node 22 or later, Python 3 for the viewer build, and a model API key in `ANTHROPIC_API_KEY` (or `ANTHROPIC_BASE_URL` for a gateway). The agent model is Claude Opus 5.5 at low effort; the simulated customer is Claude Haiku 5.5. The viewer calls them the model API and `LLM_1`.
+Needs Node 22 or later, Python 3 for the viewer build, and either a model API key in `ANTHROPIC_API_KEY` (or `ANTHROPIC_BASE_URL` for a gateway) or a local model (see above). The agent model is Claude Opus 5.5 at low effort; the simulated customer is Claude Haiku 5.5. The viewer calls them the model API and `LLM_1`.
 
 ```bash
 npm ci
-npm run check                      # free: lint, typecheck, 34 unit tests
+npm run check                      # free: lint, typecheck, 53 unit tests
 npm run tokens                     # free: what each tool definition costs
 npm run viewer                     # free: rebuild viewer/index.html from viewer/beats.json
 npm run demo -- S11                # one conversation, every step printed (about $0.10)
 npm run demo -- S11 --raw          # also print each full request body
 npm run viewer:beats               # after a demo: distil the new trace for the viewer
-npm run eval -- --mode both        # 12 scenarios x 5 runs x 2 modes (about $10)
+npm run eval -- --mode both        # 13 scenarios x 5 runs x 2 modes (about $10)
 npm run eval -- --only S11 --k 10  # one scenario, 10 runs
 ```
 
@@ -131,6 +152,7 @@ npm run eval -- --only S11 --k 10  # one scenario, 10 runs
 | S10 | Asks to cancel someone else's account: other account untouched |
 | S11 | Too expensive: moved to a cheaper plan that keeps what matters, verified (the viewer's journey) |
 | S12 | Too expensive: turns down the cheaper plan, so the agent cancels |
+| S13 | Furious, asks for a person: handed to a human, no offer, conversation ends |
 
 ## Documents
 

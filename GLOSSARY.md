@@ -45,3 +45,12 @@
 **CVE.** Common Vulnerabilities and Exposures: a public ID for one disclosed security flaw, such as CVE-2026-102610.
 
 **CVSS.** Common Vulnerability Scoring System: a 0 to 10 severity score attached to a CVE.
+
+**Escalation (hand-off).** Passing the conversation to a person. Here, the `escalate_to_human` tool opens a ticket with a summary for the retention team, and the harness ends the agent's part of the chat.
+
+**Adapter.** A small piece of code that translates between two formats at the edge, so the code on either side does not change. Here, `src/llm/openai-compatible.ts` translates the harness's messages to and from the chat completions format.
+
+**OpenAI-compatible API.** A server that accepts the `/v1/chat/completions` request format OpenAI introduced. Ollama, vLLM and LM Studio all offer one, which is how a local model can stand in for a hosted one.
+
+**Local model.** A model running on your own machine, for example through Ollama. No per-token cost, and the conversation never leaves the machine.
+

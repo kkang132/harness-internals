@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { SCENARIOS } from "../src/eval/scenarios.ts";
 import { DEFAULT_CONFIG, measureToolDefinitionTokens, runConversation } from "../src/harness/loop.ts";
 import { colour, printEvent } from "../src/harness/print.ts";
+import { provider } from "../src/llm/model-api.ts";
 
 const args = process.argv.slice(2);
 const id = args.find((a) => !a.startsWith("--")) ?? "S01";
@@ -29,7 +30,11 @@ console.log(
 );
 
 const toolDefinitionTokens = await measureToolDefinitionTokens(DEFAULT_CONFIG.agentModel);
-console.log(colour.dim(`tool definition tokens per request: ${JSON.stringify(toolDefinitionTokens)}`));
+console.log(
+  colour.dim(
+    `provider ${provider()}, agent ${DEFAULT_CONFIG.agentModel}, customer ${DEFAULT_CONFIG.customerModel}. Tool definition tokens per request${provider() === "anthropic" ? "" : " (estimated)"}: ${JSON.stringify(toolDefinitionTokens)}`,
+  ),
+);
 
 const result = await runConversation(scenario, {
   ...DEFAULT_CONFIG,

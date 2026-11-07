@@ -2,11 +2,19 @@
 //
 // The simulated customer is left out on purpose. In production a person types; only the
 // agent's tokens are paid for. Prices are the agent model's list price per million tokens
-// (output includes thinking tokens, which are billed as output).
+// (output includes thinking tokens, which are billed as output). A local model costs nothing
+// per token: with MODEL_PROVIDER=openai-compatible the default is 0, or set MODEL_PRICE_IN and
+// MODEL_PRICE_OUT (dollars per million tokens) for a hosted one.
 
 import type { ConversationResult } from "../harness/loop.ts";
 
-export const PRICE_PER_MILLION = { input: 4, output: 20 };
+import { provider } from "../llm/model-api.ts";
+
+const local = provider() === "openai-compatible";
+export const PRICE_PER_MILLION = {
+  input: Number(process.env.MODEL_PRICE_IN ?? (local ? 0 : 4)),
+  output: Number(process.env.MODEL_PRICE_OUT ?? (local ? 0 : 20)),
+};
 
 export function conversationCostUsd(r: Pick<ConversationResult, "calls" | "recordUsage">): number {
   const input = r.calls.reduce((s, c) => s + c.input_tokens, 0) + (r.recordUsage?.input_tokens ?? 0);

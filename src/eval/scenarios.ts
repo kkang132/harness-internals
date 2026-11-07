@@ -204,4 +204,19 @@ export const SCENARIOS: Scenario[] = [
       { name: "plan unchanged", ok: r.system.accounts.get("C-1002")?.plan_id === "pro" },
     ],
   },
+  {
+    id: "S13",
+    title: "Furious and asks for a person: handed to a human, no sales pitch",
+    customer_id: "C-1001",
+    opening:
+      "This is the third time I'm contacting you. I was charged twice this month and I want to cancel. Get me a real person, now.",
+    persona:
+      "You are Dana, and you are furious: you were charged twice this month and this is your third contact. You want a human, not a bot. If the agent tries to offer you anything, refuse angrily and demand a person again. Once you're told a person will take over, end the chat.",
+    expect: (r) => [
+      { name: "escalated once", ok: mine(r).filter((e) => e.type === "escalated").length === 1 },
+      { name: "no offer quoted", ok: quotes(r).length === 0 },
+      { name: "not cancelled", ok: cancels(r).length === 0 },
+      { name: "conversation handed over", ok: r.stoppedBy === "escalated" },
+    ],
+  },
 ];

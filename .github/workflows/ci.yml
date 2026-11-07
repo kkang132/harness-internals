@@ -40,6 +40,15 @@ jobs:
           fi
           echo "ok: one path to the customer system"
 
+      # Proof: only src/llm/ calls a model, and only tools.ts calls the customer system.
+      - name: Proof - one door to the model
+        run: |
+          if grep -rln "fetch(" src | grep -vE "^src/llm/|^src/harness/tools.ts$"; then
+            echo "BYPASS: network calls belong in src/llm/ or src/harness/tools.ts"
+            exit 1
+          fi
+          echo "ok: one door to the model"
+
       # Proof: nothing local or secret is tracked by git.
       - name: Proof - nothing secret tracked
         run: |

@@ -1,11 +1,11 @@
-// The three tools: what the model sees (definitions) and what the harness does (executors).
+// The four tools: what the model sees (definitions) and what the harness does (executors).
 //
 // The definitions are the only thing the model knows about these tools. It has never been
 // trained on them; it learns to call them from the name, the description and the schema,
 // sent as input tokens on every request. Notice what is absent: no customer_id, no offer_id,
 // no idempotency key. Those come from the session.
 
-import { CANCEL_REASONS, type CancelReason, FEATURES } from "../customer-system/data.ts";
+import { CANCEL_REASONS, type CancelReason, ESCALATION_REASONS, FEATURES } from "../customer-system/data.ts";
 import type { ToolDefinition } from "../llm/model-api.ts";
 import { cancelIdempotencyKey, type Session } from "./session.ts";
 import type { Trace } from "./trace.ts";
@@ -58,6 +58,25 @@ export const TOOL_DEFINITIONS = {
         },
       },
       required: ["reason", "customer_confirmed"],
+      additionalProperties: false,
+    },
+  },
+  escalate_to_human: {
+    name: "escalate_to_human",
+    description:
+      "Hand the conversation to a person on the retention team. Use it when the customer asks for a human, is angry or frustrated, or wants something no other tool can do. Write a short summary for the person taking over: what the customer wants and what has been tried. After calling it, tell the customer a person will join shortly and roughly how long it takes; then stop.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reason: { type: "string", enum: ESCALATION_REASONS },
+        summary: {
+          type: "string",
+          minLength: 10,
+          maxLength: 500,
+          description: "For the person taking over. Plain facts; no account IDs.",
+        },
+      },
+      required: ["reason", "summary"],
       additionalProperties: false,
     },
   },
@@ -126,6 +145,13 @@ export const EXECUTORS: Record<ToolName, (ctx: ToolContext, input: Record<string
     });
     const r = await call(ctx, "POST", `/retention-offers/${quoted.offer_id}/accept`);
     return r.status === 200 ? { ok: true, data: r.body } : httpError(r);
+  },
+
+  async escalate_to_human(ctx, input) {
+    const r = await call(ctx, "POST", "/escalations", { reason: input.reason, summary: input.summary });
+    if (r.status !== 201 && r.status !== 200) return httpError(r);
+    ctx.session.escalated = { ticket_id: (r.body as { ticket_id: string }).ticket_id };
+    return { ok: true, data: r.body };
   },
 
   async cancel_subscription(ctx, input) {

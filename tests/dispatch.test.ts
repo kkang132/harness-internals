@@ -87,6 +87,28 @@ describe("dispatch", () => {
   });
 });
 
+describe("escalate_to_human", () => {
+  it("records the hand-off in the session so the loop can end the conversation", async () => {
+    await withSystem({}, "C-1001", async (ctx) => {
+      const r = await dispatch(
+        use("escalate_to_human", { reason: "asked_for_human", summary: "Charged twice; wants a person." }),
+        ALL_SKILLS.retention,
+        ctx,
+      );
+      expect(r.is_error).toBeUndefined();
+      expect(ctx.session.escalated?.ticket_id).toBe("ESC-1");
+    });
+  });
+
+  it("rejects a summary that is too short, before any HTTP call", async () => {
+    await withSystem({}, "C-1001", async (ctx) => {
+      const r = await dispatch(use("escalate_to_human", { reason: "other", summary: "hi" }), ALL_SKILLS.retention, ctx);
+      expect(r.is_error).toBe(true);
+      expect(ctx.trace.events.some((e) => e.kind === "http")).toBe(false);
+    });
+  });
+});
+
 describe("foreignCustomerIds", () => {
   it("finds nested foreign customer_ids", () => {
     expect(foreignCustomerIds({ offer: { customer_id: "C-1" }, account: { customer_id: "C-2" } }, "C-1")).toEqual([

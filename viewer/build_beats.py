@@ -21,7 +21,7 @@ SRC = {
   "skill": [at("src/harness/skills.ts", "export function selectSkill", "pick the skill from session state"),
             at("src/harness/skills.ts", "const RETENTION: Skill", "the skill definitions")],
   "request": [at("src/harness/loop.ts", "function buildRequest", "build the request body"),
-              at("src/llm/model-api.ts", "export function createMessage", "send it over HTTP")],
+              at("src/llm/model-api.ts", "export async function createMessage", "send it over HTTP")],
   "tool_use": [at("src/harness/loop.ts", 'res.stop_reason === "tool_use"', "spot the tool request")],
   "text": [at("src/harness/loop.ts", "const reply = textOf(res.content)", "take the text reply")],
   "checks": [at("src/harness/dispatch.ts", "// 1. Exposure.", "exposure check"),
@@ -39,7 +39,7 @@ SRC = {
   "tool_result": [at("src/harness/loop.ts", "messages.push({ role: \"user\", content: results })", "append all results, call again")],
   "show": [at("src/harness/loop.ts", 'chat.push({ who: "agent"', "show the reply")],
   "record": [at("src/harness/record.ts", "export async function writeCaseRecord", "ask for the record")],
-  "record_json": [at("src/harness/record.ts", "JSON.parse(textOf(res.content))", "parse it")],
+  "record_json": [at("src/harness/record.ts", "parseJsonObject(textOf(res.content))", "parse it")],
   "record_check": [at("src/harness/record.ts", "export function checkCaseRecord", "check it"),
                    at("src/harness/record.ts", "export function enforceCaseRecord", "overwrite customer_id")],
 }
@@ -98,7 +98,7 @@ def build(pattern, sid):
       first = e["reason"] == "conversation start"
       b = dict(lane=("H","H"), label=f"load skill: {e['skill']}", title=f"Skill loaded: {e['skill']}", src=SRC["skill"],
         tone="skill",
-        text=("The harness picks which tools the model may see. The retention skill has two. There is no cancel tool in it, so the model cannot cancel, whatever the customer says."
+        text=("The harness picks which tools the model may see. The retention skill has three: look up the account, make an offer, and hand off to a person. There is no cancel tool in it, so the model cannot cancel before making an offer, whatever the customer says."
               if first else
               "An offer has now been quoted, so the harness swaps in the cancellation skill and adds cancel_subscription to the tool list. It is the fallback: if the customer turns down the new plan, the model can now cancel for them. It was held back until now so the model could not cancel before making an offer. The model learns the tool exists only because its definition is in the next request."),
         raw={"skill": e["skill"], "tools": e["tools"], "why": e["reason"]})

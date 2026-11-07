@@ -44,8 +44,9 @@ export type RunConfig = {
 };
 
 export const DEFAULT_CONFIG: Omit<RunConfig, "mode" | "toolDefinitionTokens"> = {
-  agentModel: "claude-opus-5-5",
-  customerModel: "claude-haiku-5-5",
+  // Override with AGENT_MODEL / CUSTOMER_MODEL, e.g. gpt-oss:20b with MODEL_PROVIDER=openai-compatible.
+  agentModel: process.env.AGENT_MODEL ?? "claude-opus-5-5",
+  customerModel: process.env.CUSTOMER_MODEL ?? "claude-haiku-5-5",
   effort: "low",
   maxCustomerTurns: 8,
   maxStepsPerTurn: 6,
@@ -72,7 +73,7 @@ export type ConversationResult = {
   recordChecks: Check[];
   recordUsage: Usage | null; // the case-record call, billed like any other
   trace: Timed<TraceEvent>[];
-  stoppedBy: "customer_done" | "turn_limit" | "refusal" | "step_limit";
+  stoppedBy: "customer_done" | "turn_limit" | "refusal" | "step_limit" | "escalated";
 };
 
 export async function runConversation(input: ConversationInput, cfg: RunConfig): Promise<ConversationResult> {
@@ -163,6 +164,13 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
         const reply = textOf(res.content);
         trace.emit({ kind: "agent", text: reply });
         chat.push({ who: "agent", text: reply });
+        break;
+      }
+
+      // Handed to a person: the agent has said its last word; a human takes it from here.
+      if (session.escalated) {
+        trace.emit({ kind: "note", text: `handed to a person: ticket ${session.escalated.ticket_id}` });
+        stoppedBy = "escalated";
         break;
       }
 

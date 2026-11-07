@@ -8,7 +8,7 @@
 // Spends money. Prints an upper bound before starting.
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { conversationCostUsd, median } from "../src/eval/cost.ts";
+import { conversationCostUsd, median, PRICE_PER_MILLION } from "../src/eval/cost.ts";
 import { SCENARIOS } from "../src/eval/scenarios.ts";
 import { meanPassHatK } from "../src/eval/score.ts";
 import {
@@ -33,9 +33,9 @@ const concurrency = Number(flag("concurrency") ?? 5);
 const scenarios = SCENARIOS.filter((s) => !only || only.includes(s.id));
 
 // Upper bound: measured S01 used ~13k input / ~0.5k output tokens on the agent model.
-// Assume 2x that per conversation, at Claude Opus 5.5 list prices ($4 / $20 per million).
+// Assume 2x that per conversation, at PRICE_PER_MILLION (0 for a local model).
 const runs = scenarios.length * k * modes.length;
-const bound = runs * ((26_000 * 4 + 1_500 * 20) / 1e6);
+const bound = runs * ((26_000 * PRICE_PER_MILLION.input + 1_500 * PRICE_PER_MILLION.output) / 1e6);
 console.log(
   `${runs} conversations (${scenarios.length} scenarios x k=${k} x ${modes.join("+")}). Upper bound ~$${bound.toFixed(2)}.`,
 );

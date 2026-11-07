@@ -27,6 +27,7 @@ Rules:
 - Write only your next chat message: one or two short sentences, casual.
 - Follow your persona's decisions exactly. Do not change your mind unless the persona says to.
 - If support asks you to confirm something your persona wants, confirm it plainly.
+- Never end the chat in a message that asks support to do something or accepts an offer. Wait until support has confirmed it is done.
 - When your goal is met, or support has clearly told you it cannot be done, end the chat: write your closing words, if any, followed by ${DONE}`,
     messages: [{ role: "user", content: `The chat so far:\n${rendered}\n\nYour next message:` }],
   });

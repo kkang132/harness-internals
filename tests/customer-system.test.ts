@@ -71,6 +71,27 @@ describe("retention offers", () => {
   });
 });
 
+describe("escalations", () => {
+  const escalate = (sys: CustomerSystem, body: unknown) =>
+    sys.handle("POST", "/v1/customers/C-1001/escalations", {}, body);
+
+  it("opens one ticket per customer and returns it again on a repeat", () => {
+    const sys = new CustomerSystem();
+    const a = escalate(sys, { reason: "customer_upset", summary: "Charged twice; wants a person." });
+    const b = escalate(sys, { reason: "customer_upset", summary: "Charged twice; wants a person." });
+    expect(a.status).toBe(201);
+    expect(b.status).toBe(200);
+    expect((b.body as { ticket_id: string; already_open: boolean }).already_open).toBe(true);
+    expect(sys.events.filter((e) => e.type === "escalated")).toHaveLength(1);
+  });
+
+  it("requires a known reason and a real summary", () => {
+    const sys = new CustomerSystem();
+    expect(escalate(sys, { reason: "bored", summary: "Charged twice; wants a person." }).status).toBe(422);
+    expect(escalate(sys, { reason: "asked_for_human", summary: "help" }).status).toBe(422);
+  });
+});
+
 describe("listen", () => {
   it("binds to loopback only", async () => {
     const srv = await new CustomerSystem().listen();

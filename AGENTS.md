@@ -6,6 +6,8 @@ Guidance for AI agents in this repository.
 
 - Never add `customer_id`, `offer_id` or an idempotency key to a tool's `input_schema`. Those come from the session.
 - Never call the customer system from anywhere but `call()` in `src/harness/tools.ts`.
+- Never call a model from anywhere but `src/llm/`. Provider differences live in an adapter there, never in the harness.
+- Never let a provider adapter drop a tool call or a tool result. Its tests must cover both directions.
 - Never let a tool failure throw out of the loop. Every failure becomes a `tool_result` with `is_error: true`.
 - Never edit or rebuild a message already in the history. Append the API's `content` exactly as returned.
 - Never score a scenario from the transcript when the customer system's event log can answer it.
@@ -30,14 +32,15 @@ Guidance for AI agents in this repository.
 Deterministic, no model calls. Run before and after any change.
 
 ```bash
-# 1. lint, typecheck, 34 unit tests (schemas, skills, customer system, dispatch, case note, eval arithmetic)
+# 1. lint, typecheck, 53 unit tests (schemas, skills, customer system, dispatch, case note, eval arithmetic, adapter)
 npm run check
 
 # 2. no tool definition mentions customer_id, offer_id or an idempotency key
 npx vitest run -t "never mention customer_id"
 
-# 3. only tools.ts talks to the customer system
+# 3. only tools.ts talks to the customer system, and only src/llm/ talks to a model
 grep -rln "/v1/customers" src/harness | grep -v "src/harness/tools.ts" && echo "BYPASS" || echo "ok"
+grep -rln "fetch(" src | grep -vE "^src/llm/|^src/harness/tools.ts$" && echo "BYPASS" || echo "ok"
 
 # 4. the viewer names no model vendor
 grep -ciE "claude|anthropic|opus|sonnet|haiku" viewer/index.html viewer/beats.json | grep -v ":0$" && echo "NAMED" || echo "ok"

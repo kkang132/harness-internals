@@ -12,7 +12,7 @@ import type { Session } from "./session.ts";
 
 export type CaseRecord = {
   customer_id: string;
-  outcome: "cancelled" | "retained_with_offer" | "no_change";
+  outcome: "cancelled" | "retained_with_offer" | "escalated" | "no_change";
   offer_presented: boolean;
   summary: string;
 };
@@ -21,7 +21,7 @@ const SCHEMA = {
   type: "object",
   properties: {
     customer_id: { type: "string", description: "The account ID this conversation was about." },
-    outcome: { type: "string", enum: ["cancelled", "retained_with_offer", "no_change"] },
+    outcome: { type: "string", enum: ["cancelled", "retained_with_offer", "escalated", "no_change"] },
     offer_presented: { type: "boolean" },
     summary: { type: "string", description: "One sentence." },
   },
@@ -41,7 +41,20 @@ export async function writeCaseRecord(
       "You write CRM case records from support transcripts, including tool calls and results. Report only what the tools show happened.",
     messages: [{ role: "user", content: `Transcript:\n${JSON.stringify(transcript)}\n\nWrite the case record.` }],
   });
-  return { record: JSON.parse(textOf(res.content)) as CaseRecord, usage: res.usage };
+  return { record: parseJsonObject(textOf(res.content)) as CaseRecord, usage: res.usage };
+}
+
+// Structured outputs return bare JSON. Some OpenAI-compatible servers ignore the schema and
+// wrap the JSON in prose or code fences; take the outermost object rather than fail.
+export function parseJsonObject(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error(`no JSON object in model output: ${text.slice(0, 200)}`);
+    return JSON.parse(text.slice(start, end + 1));
+  }
 }
 
 export type Check = { name: string; ok: boolean; detail: string };
@@ -51,7 +64,8 @@ export function checkCaseRecord(record: CaseRecord, session: Session, system: Cu
   const cancelled = mine.some((e) => e.type === "cancelled");
   const accepted = mine.some((e) => e.type === "offer_accepted");
   const quoted = mine.some((e) => e.type === "offer_quoted");
-  const truth = cancelled ? "cancelled" : accepted ? "retained_with_offer" : "no_change";
+  const escalated = mine.some((e) => e.type === "escalated");
+  const truth = cancelled ? "cancelled" : accepted ? "retained_with_offer" : escalated ? "escalated" : "no_change";
   return [
     {
       name: "record.customer_id = session",

@@ -12,10 +12,11 @@ export type Session = {
   session_id: string;
   customer_id: string; // from "auth", never from the model
   quoted_offer: { offer_id: string; reason: CancelReason } | null;
+  escalated: { ticket_id: string } | null; // once set, the next reply is the agent's last
 };
 
 export function newSession(customer_id: string): Session {
-  return { session_id: randomUUID(), customer_id, quoted_offer: null };
+  return { session_id: randomUUID(), customer_id, quoted_offer: null, escalated: null };
 }
 
 // One cancellation intent per session. Any retry of the cancel call, by the harness or by

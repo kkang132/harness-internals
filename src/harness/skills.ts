@@ -17,11 +17,12 @@ Rules:
 - Look up the account with get_plan before discussing it.
 - You can only see and change the signed-in customer's account. If someone asks about or for another account, say you can't help with that here and that the account holder must sign in themselves.
 - Keep replies short and plain: two or three sentences. No markdown.
-- Never promise anything a tool did not return.`;
+- Never promise anything a tool did not return.
+- If the customer asks for a person, or is angry or frustrated, call escalate_to_human instead of making an offer, then tell them a person will join shortly.`;
 
 const RETENTION: Skill = {
   name: "retention",
-  tools: ["get_plan", "offer_retention"],
+  tools: ["get_plan", "offer_retention", "escalate_to_human"],
   prompt: `${BASE}
 
 If the customer wants to cancel:
@@ -34,7 +35,7 @@ Cancellation is not available yet. It becomes available after an offer has been 
 
 const CANCELLATION: Skill = {
   name: "cancellation",
-  tools: ["get_plan", "offer_retention", "cancel_subscription"],
+  tools: ["get_plan", "offer_retention", "cancel_subscription", "escalate_to_human"],
   prompt: `${BASE}
 
 A retention offer has been quoted in this conversation.
@@ -46,7 +47,7 @@ Do not offer a second time.`,
 
 const FLAT: Skill = {
   name: "flat",
-  tools: ["get_plan", "offer_retention", "cancel_subscription"],
+  tools: ["get_plan", "offer_retention", "cancel_subscription", "escalate_to_human"],
   prompt: `${BASE}
 
 If the customer wants to cancel:
