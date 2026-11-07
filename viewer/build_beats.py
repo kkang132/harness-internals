@@ -88,8 +88,10 @@ def build(pattern, sid):
     if k == "customer":
       chat.append({"who": "customer", "text": e["text"], "t": e["t"]})
       closing = not any(x["kind"] == "request" for x in ev[i+1:])
+      opening = not chat
       b = dict(lane=("C","H"), label="message", title="The customer signs off" if closing else "The customer writes", src=SRC["customer"],
-        text=("The customer says thanks and leaves the chat. The harness shows the message but sends nothing to the model: nobody is waiting for a reply." if closing else
+        text=("The chat opens. The harness appends the message to the history as a user message. Nothing has gone to the model yet." if opening else
+              "The customer says thanks and leaves the chat. The harness shows the message but sends nothing to the model: nobody is waiting for a reply." if closing else
               "The harness appends it to the history as a user message. Nothing has gone to the model yet. The time on this step is the simulated customer writing its reply; a person would take longer."),
         raw={"role": "user", "content": e["text"]})
     elif k == "skill":

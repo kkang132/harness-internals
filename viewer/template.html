@@ -91,9 +91,11 @@ button:focus-visible, .row:focus-visible, input:focus-visible { outline: 2px sol
 .lat { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font: 0.8rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .lat b { color: var(--ink); font-weight: 500; }
 .lat .slow b { color: var(--model); }
-.src { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
-.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--harness) 40%, transparent); }
-.src a:hover { border-bottom-color: var(--harness); }
+.src { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); align-items: baseline; }
+.src .h { grid-column: 1 / -1; font: 600 0.68rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--harness) 40%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.src a:hover { text-decoration-color: var(--harness); }
+.stage > * { min-width: 0; }
 .controls { grid-row: 1 / span 3; grid-column: 2; display: flex; flex-direction: column; gap: 8px; align-items: end; justify-content: center; }
 .btns { display: flex; gap: 6px; }
 .btns button { font: 500 0.9rem var(--font-body); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunken); color: var(--ink); cursor: pointer; }
@@ -148,10 +150,10 @@ button:focus-visible, .row:focus-visible, input:focus-visible { outline: 2px sol
 .row .arrow::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
 .row .arrow.right::after { right: -2px; border-left-color: currentColor; border-right: 0; }
 .row .arrow.left::after { left: -2px; border-right-color: currentColor; border-left: 0; }
-.row .lbl { position: absolute; top: 4px; font: 500 0.7rem var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.row .lbl { position: absolute; top: 4px; font: 500 0.7rem var(--font-mono); white-space: nowrap; text-align: center; transform: translateX(-50%); }
 .row .ms { position: absolute; right: 6px; top: 12px; font: 0.64rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .row .ms.slow { color: var(--model); font-weight: 500; }
-.row .pill { position: absolute; top: 8px; left: 37.5%; transform: translateX(-50%); font: 500 0.68rem var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; background: var(--surface); white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis; }
+.row .pill { position: absolute; top: 8px; left: 37.5%; transform: translateX(-50%); font: 500 0.68rem var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; background: var(--surface); white-space: nowrap; max-width: 72%; }
 .row.self-fail .pill { background: var(--tint-fail); }
 .row.self-pass .pill { background: var(--tint-pass); }
 .c-C { color: var(--customer); } .c-H { color: var(--harness); } .c-M { color: var(--model); } .c-S { color: var(--system); }
@@ -175,13 +177,29 @@ pre.json { margin: 0; padding: 12px 14px; font: 0.76rem/1.55 var(--font-mono); o
 .fields { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
 .fields th { text-align: left; font: 600 0.66rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 0 8px 4px 0; }
 .fields td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
-.fields td.f { font-family: var(--font-mono); white-space: nowrap; }
-.fields td.v { font-family: var(--font-mono); color: var(--str); word-break: break-word; }
+.fields td.f { font-family: var(--font-mono); }
+.fields td.f .rule { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; margin-top: 2px; max-width: 34ch; }
+.fields td.v { font-family: var(--font-mono); color: var(--str); }
+.fields td.v .item { white-space: nowrap; }
+.fields td.v .src-of { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; white-space: normal; margin-top: 2px; }
 .fields td.r { color: var(--muted); }
+.fields td:last-child { white-space: nowrap; }
 .fields tr[data-tip] { cursor: help; }
 .fields tr[data-tip]:hover td, .fields tr[data-tip]:focus-within td { background: var(--sunken); }
 .ok { font: 600 0.7rem var(--font-mono); color: var(--pass); } .bad { font: 600 0.7rem var(--font-mono); color: var(--fail); }
 .tablewrap { overflow-x: auto; }
+/* When the inspector itself is narrow, each table row becomes a small stacked card. */
+.inspector { container-type: inline-size; }
+@container (max-width: 520px) {
+  .fields thead { display: none; }
+  .fields tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .fields td { border-top: 0; padding: 0; }
+  .fields td.f { grid-column: 1; }
+  .fields td.res { grid-column: 2; grid-row: 1; text-align: right; }
+  .fields td.v { grid-column: 1 / -1; }
+  .fields td.v[data-label]::before { content: attr(data-label) ": "; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; }
+  .fields td.v .item { white-space: normal; overflow-wrap: anywhere; }
+}
 .row[data-tip] .pill { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
 #tip { position: fixed; z-index: 50; max-width: min(440px, calc(100vw - 32px)); max-height: 60vh; overflow: auto; background: var(--surface); border: 1px solid var(--harness); border-radius: 8px; box-shadow: 0 8px 28px color-mix(in srgb, var(--ink) 18%, transparent); padding: 10px 12px; font: 0.74rem/1.5 var(--font-mono); pointer-events: none; }
 #tip h4 { margin: 0 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--harness); }
@@ -201,13 +219,16 @@ footer code { font-family: var(--font-mono); font-size: 0.78rem; }
   .lat { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font: 0.8rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .lat b { color: var(--ink); font-weight: 500; }
 .lat .slow b { color: var(--model); }
-.src { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
-.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--harness) 40%, transparent); }
-.src a:hover { border-bottom-color: var(--harness); }
+.src { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); align-items: baseline; }
+.src .h { grid-column: 1 / -1; font: 600 0.68rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--harness) 40%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.src a:hover { text-decoration-color: var(--harness); }
+.stage > * { min-width: 0; }
 .controls { grid-row: auto; grid-column: 1; align-items: stretch; }
   .btns button { flex: 1; }
   .seq { max-height: 50vh; }
-  .lanes div small { display: none; }
+  .lanes div small { font-size: 0.58rem; }
+  .lanes div { font-size: 0.68rem; }
   .row .lbl { font-size: 0.62rem; }
 }
 @media (prefers-reduced-motion: reduce) { .row { transition: none; } }
@@ -261,7 +282,7 @@ footer code { font-family: var(--font-mono); font-size: 0.78rem; }
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel inspector">
       <h3>On the wire</h3>
       <div class="tokens" id="tokens" hidden>
         <div class="bar"><span class="t" id="barT"></span><span class="r" id="barR"></span></div>
@@ -378,7 +399,7 @@ function buildRows() {
     const x1 = LANE_X[a], x2 = LANE_X[z], left = Math.min(x1, x2), w = Math.abs(x2 - x1);
     const colour = b.tone === "fail" ? "c-fail" : `c-${a}`;
     return `<div class="row" data-i="${i}" tabindex="-1">
-      <span class="lbl ${colour}" style="left:${left}%;width:${w}%">${esc(b.label)}</span>
+      <span class="lbl ${colour}" style="left:${left + w / 2}%">${esc(b.label)}</span>
       <span class="arrow ${x2 > x1 ? "right" : "left"} ${colour}" style="left:${left}%;width:${w}%"></span>${msLabel(b)}</div>`;
   }).join("");
   $("rows").querySelectorAll(".row").forEach((r) => r.addEventListener("click", () => go(+r.dataset.i)));
@@ -396,7 +417,7 @@ function go(i) {
   $("lat").innerHTML = `<span class="${b.lat_ms >= 500 ? "slow" : ""}">Step latency <b>${fmtMs(b.lat_ms)}</b></span><span>Elapsed <b>${fmtMs(b.cum_ms)}</b></span><span>Chat clock <b>${clock(b.cum_ms)}</b></span>`;
   $("stepno").textContent = `Step ${step + 1} of ${c.beats.length}`;
   $("src").innerHTML = (b.src || []).length
-    ? `<span>In the code:</span>` + b.src.map((x) => `<a href="${SOURCE_BASE}${x.file}${SOURCE_BASE.startsWith("http") ? `#L${x.line}` : ""}" target="_blank" rel="noopener">${esc(x.file)}:${x.line}</a> <span>${esc(x.what)}</span>`).join("")
+    ? `<span class="h">In the code</span>` + b.src.map((x) => `<a href="${SOURCE_BASE}${x.file}${SOURCE_BASE.startsWith("http") ? `#L${x.line}` : ""}" target="_blank" rel="noopener">${esc(x.file)}:${x.line}</a><span>${esc(x.what)}</span>`).join("")
     : "";
   $("tag").innerHTML = `<span class="tag ${cls}">${label}</span>`;
   $("title").textContent = b.title;
@@ -424,11 +445,14 @@ function go(i) {
   const sc = schemaFor(c, step);
   if (b.table) {
     $("schema").hidden = false;
+    // rows: [field, model wrote, truth, source of truth, result]
     $("schema").innerHTML = `<div class="tablewrap"><table class="fields">
-      <thead><tr>${b.table.columns.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>
-      <tbody>${b.table.rows.map((r) => `<tr>${r.map((v, k) => k === r.length - 1
-        ? `<td>${v === "PASS" ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>'}</td>`
-        : `<td class="${k === 0 ? "f" : k === 1 || k === 2 ? "v" : "r"}">${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+      <thead><tr><th>Field</th><th>Model wrote</th><th>Truth</th><th>Result</th></tr></thead>
+      <tbody>${b.table.rows.map(([field, wrote, truth, source, result]) => `<tr>
+        <td class="f">${esc(field)}</td>
+        <td class="v" data-label="Model wrote"><span class="item">${esc(wrote)}</span></td>
+        <td class="v" data-label="Truth"><span class="item">${esc(truth)}</span><span class="src-of">from ${esc(source)}</span></td>
+        <td class="res">${result === "PASS" ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>'}</td></tr>`).join("")}</tbody></table></div>`;
   } else if (sc) {
     const whole = tipId(`${sc.tool}.input_schema`, sc.schema);
     const props = sc.schema.properties || {};
@@ -439,12 +463,16 @@ function go(i) {
         <span class="chip" tabindex="0" data-tip="${whole}">${esc(sc.tool)}.input_schema</span>
         <span>hover for the full schema</span></div>
       <div class="tablewrap"><table class="fields">
-        <thead><tr><th>Field</th><th>Model sent</th><th>Rule</th>${isCheck ? "<th>Result</th>" : ""}</tr></thead>
+        <thead><tr><th>Field and rule</th><th>Model sent</th>${isCheck ? "<th>Result</th>" : ""}</tr></thead>
         <tbody>${sc.fields.map((f) => {
           const p = props[f.field];
           const tip = p ? ` data-tip="${tipId(`properties.${f.field}`, p)}" tabindex="0"` : "";
-          const v = f.value === null || f.value === undefined ? "(none)" : JSON.stringify(f.value);
-          return `<tr${tip}><td class="f">${esc(f.field)}</td><td class="v">${esc(v)}</td><td class="r">${esc(f.rule)}</td>${isCheck ? `<td>${f.ok ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>'}</td>` : ""}</tr>`;
+          const v = f.value === null || f.value === undefined
+            ? '<span class="item">(none)</span>'
+            : Array.isArray(f.value)
+              ? `[${f.value.map((x) => `<span class="item">${esc(JSON.stringify(x))}</span>`).join(", ")}]`
+              : `<span class="item">${esc(JSON.stringify(f.value))}</span>`;
+          return `<tr${tip}><td class="f">${esc(f.field)}<span class="rule">${esc(f.rule)}</span></td><td class="v" data-label="Model sent">${v}</td>${isCheck ? `<td class="res">${f.ok ? '<span class="ok">PASS</span>' : '<span class="bad">FAIL</span>'}</td>` : ""}</tr>`;
         }).join("")}</tbody></table></div>`;
   } else {
     $("schema").hidden = true;
