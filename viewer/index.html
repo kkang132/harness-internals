@@ -8,234 +8,278 @@
 <title>How It Works: Agent Tool Calling</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: a protocol analyser for one conversation. Caption and controls on top; below, a
-   four-lane sequence diagram (who talks to whom) beside an inspector showing the exact bytes. */
 :root {
-  --bg: #eef1f4;
-  --surface: #ffffff;
-  --sunken: #f6f8fa;
-  --ink: #15202b;
-  --muted: #5a6774;
-  --line: #d3dae1;
-  --customer: #6b5a4e;
-  --harness: #0d7473;
-  --model: #3a4cd0;
-  --system: #8f5c00;
-  --pass: #1d7f47;
-  --fail: #be3328;
-  --tint-harness: #e3f2f1;
-  --tint-model: #e7eafc;
-  --tint-fail: #fbe9e7;
-  --tint-pass: #e5f3eb;
-  --tint-customer: #f6ece3;
-  --customer-line: #dcc3ad;
-  --key: #3a4cd0;
-  --str: #0d6463;
-  --num: #8f5c00;
-  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0e141a; --surface: #151d25; --sunken: #111820; --ink: #e5ebf1; --muted: #93a0ad; --line: #283440;
-    --customer: #c9b4a4; --harness: #42c2bc; --model: #8e9cff; --system: #e2aa4c; --pass: #53c483; --fail: #ff7466;
-    --tint-harness: #12302f; --tint-model: #1b2149; --tint-fail: #3a1a17; --tint-pass: #14301f;
-    --tint-customer: #2a211b; --customer-line: #5a4535;
-    --key: #a3afff; --str: #6fd6d0; --num: #e9b964;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0e141a; --surface: #151d25; --sunken: #111820; --ink: #e5ebf1; --muted: #93a0ad; --line: #283440;
-  --customer: #c9b4a4; --harness: #42c2bc; --model: #8e9cff; --system: #e2aa4c; --pass: #53c483; --fail: #ff7466;
-  --tint-harness: #12302f; --tint-model: #1b2149; --tint-fail: #3a1a17; --tint-pass: #14301f;
-  --tint-customer: #2a211b; --customer-line: #5a4535;
-  --key: #a3afff; --str: #6fd6d0; --num: #e9b964;
+  --bg: #080808;
+  --surface: rgba(255, 255, 255, 0.055);
+  --sunken: rgba(255, 255, 255, 0.035);
+  --ink: #f5f5f5;
+  --muted: #a1a1aa;
+  --line: rgba(255, 255, 255, 0.1);
+  --customer: #d4d4d8;
+  --harness: #ffffff;
+  --model: #e4e4e7;
+  --system: #a1a1aa;
+  --pass: #86b89a;
+  --fail: #dc9292;
+  --tint-harness: rgba(255, 255, 255, 0.1);
+  --tint-model: rgba(255, 255, 255, 0.075);
+  --tint-fail: rgba(220, 146, 146, 0.12);
+  --tint-pass: rgba(134, 184, 154, 0.12);
+  --tint-customer: rgba(255, 255, 255, 0.055);
+  --customer-line: rgba(255, 255, 255, 0.1);
+  --key: #d4d4d8;
+  --str: #c4c4c8;
+  --num: #a1a1aa;
+  --glass-highlight: rgba(255, 255, 255, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.24);
+  --accent: #5c3f2b;
+  --accent-ink: #f4ece3;
+  --accent-tint: rgba(110, 76, 50, 0.22);
+  --accent-line: rgba(140, 100, 70, 0.55);
+  --wood: #a8805e;
+  --navy-tint: rgba(38, 56, 92, 0.38);
+  --font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f4f4f5;
+  --surface: rgba(255, 255, 255, 0.76);
+  --sunken: rgba(0, 0, 0, 0.035);
+  --ink: #18181b;
+  --muted: #71717a;
+  --line: rgba(24, 24, 27, 0.11);
+  --customer: #52525b;
+  --harness: #18181b;
+  --model: #3f3f46;
+  --system: #71717a;
+  --pass: #47745a;
+  --fail: #a34f4f;
+  --tint-harness: rgba(24, 24, 27, 0.07);
+  --tint-model: rgba(24, 24, 27, 0.05);
+  --tint-fail: rgba(163, 79, 79, 0.08);
+  --tint-pass: rgba(71, 116, 90, 0.08);
+  --tint-customer: rgba(255, 255, 255, 0.76);
+  --customer-line: rgba(24, 24, 27, 0.11);
+  --key: #52525b;
+  --str: #47745a;
+  --num: #71717a;
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: rgba(24, 24, 27, 0.08);
+  --accent: #1e2a44;
+  --accent-ink: #ffffff;
+  --accent-tint: rgba(196, 140, 128, 0.1);
+  --accent-line: rgba(196, 140, 128, 0.4);
+  --wood: #8a6446;
+  --navy-tint: rgba(30, 42, 68, 0.07);
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 20px 40px;
+  margin: 0;
+  background: radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.075), transparent 38%), radial-gradient(ellipse at 86% 28%, rgba(255, 255, 255, 0.035), transparent 34%), var(--bg);
+  background-attachment: fixed;
+  color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.6;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 28px;
 }
-.wrap { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.wrap { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 
-header { display: flex; flex-direction: column; gap: 4px; }
-.eyebrow { font: 600 0.72rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
-h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; letter-spacing: -0.01em; margin: 0; line-height: 1.1; }
-.dek { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
-.chapters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+h1 { font-weight: 500; font-size: clamp(1.35rem, 2vw, 1.5rem); letter-spacing: -0.02em; margin: 0; line-height: 1.3; }
+.dek { color: var(--muted); margin: 2px 0 0; max-width: 82ch; font-size: 0.92rem; }
+.eyebrow { font: 500 0.82rem var(--font-body); letter-spacing: 0.015em; color: var(--muted); margin: 0 0 10px; }
+
+/* Journey selector: one card per journey, wrapping as the page narrows */
+.chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .chapters button {
-  font: 400 0.84rem/1.4 var(--font-body); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
-  background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 4px;
+  font: 400 0.86rem/1.5 var(--font-body); padding: 20px 22px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 10px 32px var(--glass-shadow); transition: border-color .15s, box-shadow .15s, background .15s;
 }
-.chapters .jn { font: 500 0.68rem var(--font-mono); color: var(--muted); letter-spacing: 0.04em; }
-.chapters .jt { font: 600 0.98rem/1.25 var(--font-display); }
-.chapters .js { color: var(--muted); }
-.chapters .jf { font: 500 0.7rem/1.35 var(--font-mono); color: var(--fail); background: var(--tint-fail); border-radius: 4px; padding: 3px 6px; align-self: flex-start; }
-.chapters .jsteps { font: 0.7rem var(--font-mono); color: var(--muted); margin-top: auto; }
-.chapters .jstats { display: flex; flex-wrap: wrap; gap: 2px 14px; font: 0.74rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 6px; border-top: 1px solid var(--line); }
+.chapters button:hover { border-color: color-mix(in srgb, var(--harness) 45%, var(--line)); box-shadow: inset 0 1px 0 var(--glass-highlight), 0 12px 36px var(--glass-shadow); }
+.chapters .jtop { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 400 0.76rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chapters .jt { font: 500 0.92rem/1.4 var(--font-body); letter-spacing: 0; }
+.chapters .js { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin-bottom: 4px; }
+.chapters .jf { font: 500 0.72rem/1.4 var(--font-mono); color: var(--fail); background: var(--tint-fail); border-radius: 5px; padding: 3px 7px; align-self: flex-start; }
+.chapters .jstats { margin-top: auto; display: flex; justify-content: space-between; gap: 8px; font: 0.74rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 10px; border-top: 1px solid var(--line); white-space: nowrap; }
 .chapters .jstats b { color: var(--ink); font-weight: 500; }
-.chapters button[aria-pressed="true"] { border-color: var(--harness); box-shadow: inset 0 0 0 1px var(--harness); }
-button:focus-visible, .row:focus-visible, input:focus-visible { outline: 2px solid var(--model); outline-offset: 2px; }
+.chapters button[aria-pressed="true"] { border-color: color-mix(in srgb, var(--harness) 55%, var(--line)); background: color-mix(in srgb, var(--tint-harness) 70%, var(--surface)); box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 0 1px color-mix(in srgb, var(--harness) 25%, transparent), 0 10px 32px var(--glass-shadow); }
+button:focus-visible, .row:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--model); outline-offset: 2px; }
 
-/* Caption + controls */
-.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; }
-.stepno { font: 500 0.75rem var(--font-mono); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; display: flex; gap: 10px; align-items: center; }
-.tag { font: 500 0.7rem var(--font-mono); padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; }
+/* Stage caption + controls with stable height and symmetric footer */
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px 20px; display: flex; flex-direction: column; gap: 16px; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); box-shadow: inset 0 1px 0 var(--glass-highlight), 0 10px 32px var(--glass-shadow); }
+.stage-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px 40px; align-items: center; }
+.stage-copy { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.stepno { font: 400 0.78rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tag { font: 500 0.72rem var(--font-body); padding: 4px 9px; border-radius: 5px; }
 .tag.harness { background: var(--tint-harness); color: var(--harness); }
 .tag.model { background: var(--tint-model); color: var(--model); }
 .tag.fail { background: var(--tint-fail); color: var(--fail); }
 .tag.pass { background: var(--tint-pass); color: var(--pass); }
-.stage h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.35rem; margin: 2px 0 4px; text-wrap: balance; line-height: 1.2; }
-.stage p { margin: 0; max-width: 72ch; color: var(--ink); }
-.lat { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font: 0.8rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.lat b { color: var(--ink); font-weight: 500; }
-.lat .slow b { color: var(--model); }
-.src { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); align-items: baseline; }
-.src .h { grid-column: 1 / -1; font: 600 0.68rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
-.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--harness) 40%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
-.src a:hover { text-decoration-color: var(--harness); }
-.stage > * { min-width: 0; }
-.controls { grid-row: 1 / span 3; grid-column: 2; display: flex; flex-direction: column; gap: 8px; align-items: end; justify-content: center; }
+.stage h2 { font-weight: 500; font-size: 1.12rem; letter-spacing: -0.01em; margin: 1px 0 2px; line-height: 1.4; }
+.stage p { margin: 0; max-width: 76ch; color: var(--ink); font-size: 0.92rem; min-height: 2.75em; }
+.controls { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; justify-content: center; }
 .btns { display: flex; gap: 6px; }
-.btns button { font: 500 0.9rem var(--font-body); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunken); color: var(--ink); cursor: pointer; }
-.btns button.primary { background: var(--harness); border-color: var(--harness); color: var(--surface); }
+.btns button { font: 500 0.88rem var(--font-body); padding: 8px 15px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btns button:hover:not(:disabled) { background: var(--sunken); }
+.btns button.primary { background: var(--accent); border-color: var(--accent-line); color: var(--accent-ink); box-shadow: 0 6px 20px var(--accent-tint); }
+.btns button.primary:hover:not(:disabled) { filter: brightness(1.04); }
 .btns button:disabled { opacity: 0.4; cursor: default; }
-.hint { font: 0.72rem var(--font-mono); color: var(--muted); }
-.scrub { grid-column: 1 / -1; position: relative; height: 22px; margin-top: 6px; }
+.hint { font: 0.76rem var(--font-body); color: var(--muted); }
+.scrub { position: relative; height: 20px; }
 .scrub input { width: 100%; margin: 0; accent-color: var(--harness); position: relative; z-index: 1; }
-.marks { position: absolute; inset: 14px 8px 0; pointer-events: none; }
+.marks { position: absolute; inset: 13px 8px 0; pointer-events: none; }
 .marks i { position: absolute; top: 0; width: 6px; height: 6px; border-radius: 50%; transform: translateX(-3px); }
 .marks i.fail { background: var(--fail); }
 .marks i.skill { background: var(--harness); }
+.stage-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 20px; padding-top: 8px; border-top: 1px solid var(--line); }
+.lat { display: flex; flex-wrap: wrap; gap: 4px 18px; font: 0.8rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lat b { color: var(--ink); font-weight: 500; }
+.lat .slow b { color: var(--model); }
+.src { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font: 0.78rem var(--font-body); color: var(--muted); }
+.src .h { font-size: 0.72rem; font-weight: 600; }
+.src a { color: var(--harness); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--harness) 40%, transparent); text-underline-offset: 3px; }
+.src a:hover { text-decoration-color: var(--harness); }
 
-/* Main grid */
-.main { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.5fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; display: flex; flex-direction: column; }
-.panel > h3 { font: 600 0.72rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+/* Bilaterally symmetric 3-column workspace (1fr : 1.35fr : 1fr) with locked equal height */
+.main { display: grid; grid-template-columns: minmax(270px, 1fr) minmax(380px, 1.35fr) minmax(270px, 1fr); gap: 20px; align-items: stretch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; height: clamp(420px, calc(100vh - 650px), 570px); overflow: hidden; display: flex; flex-direction: column; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); box-shadow: inset 0 1px 0 var(--glass-highlight), 0 10px 32px var(--glass-shadow); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 48px; padding: 0 20px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.panel-head h3 { font: 500 0.86rem var(--font-body); color: var(--ink); margin: 0; }
+.panel-meta { font: 400 0.76rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Chat */
-.chatpanel { background: var(--tint-customer); border-color: var(--customer-line); }
-.chatpanel > h3 { color: var(--customer); border-bottom-color: var(--customer-line); }
-.chatpanel .bubble.customer { background: var(--surface); border-color: var(--customer-line); }
-.chatpanel .bubble.agent { background: var(--surface); border: 1px solid var(--line); }
-.chatpanel .bubble.new { box-shadow: 0 0 0 2px var(--customer); }
-.chat { padding: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 68vh; overflow-y: auto; }
-.bubble { padding: 8px 11px; border-radius: 10px; font-size: 0.88rem; max-width: 92%; }
+/* Left panel: customer chat */
+.chatpanel, .inspector { border-top: 1px solid var(--accent-line); }
+.chatpanel .panel-head, .inspector .panel-head { background: linear-gradient(180deg, var(--accent-tint), transparent); }
+.chatpanel .panel-head h3, .inspector .panel-head h3 { color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.chatpanel .panel-head h3::before, .inspector .panel-head h3::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.chatpanel .bubble.customer { background: var(--sunken); border: 1px solid var(--customer-line); border-left: 2px solid var(--wood); }
+.chatpanel .bubble.agent { background: var(--navy-tint); border: 1px solid var(--line); }
+.chatpanel .bubble.new { box-shadow: 0 0 0 1px var(--accent-line), 0 6px 20px var(--accent-tint); }
+.chat { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.bubble { padding: 12px 15px; border-radius: 10px; font-size: 0.88rem; max-width: 90%; line-height: 1.55; }
 .bubble.customer { background: var(--sunken); border: 1px solid var(--line); align-self: flex-start; }
-.bubble.agent { background: var(--tint-model); align-self: flex-end; }
+.bubble.agent { background: var(--sunken); align-self: flex-end; }
 .bubble.new { box-shadow: 0 0 0 2px var(--harness); }
-.bubble .when { display: block; font: 0.66rem var(--font-mono); color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.bubble .when { display: block; font: 0.72rem var(--font-body); color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .bubble.agent .when { text-align: right; }
-.chat .empty { color: var(--muted); font-size: 0.85rem; }
+.chat .empty { color: var(--muted); font-size: 0.85rem; margin: 0; }
 
-/* Sequence diagram */
-.lanes { display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0 8px; border-bottom: 1px solid var(--line); text-align: center; position: sticky; top: 0; background: var(--surface); z-index: 2; border-radius: 10px 10px 0 0; }
-.lanes div { font: 600 0.74rem var(--font-body); }
-.lanes div small { display: block; font: 400 0.66rem var(--font-mono); color: var(--muted); }
+/* Center panel: 4-lane sequence diagram */
+.lanes { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr); padding: 12px 0 10px; border-bottom: 1px solid var(--line); text-align: center; background: transparent; }
+.lanes div { font: 500 0.76rem var(--font-body); }
+.lanes div small { display: block; font: 400 0.72rem var(--font-body); color: var(--muted); }
 .lanes .C { color: var(--customer); } .lanes .H { color: var(--harness); } .lanes .M { color: var(--model); } .lanes .S { color: var(--system); }
-.seq { max-height: 68vh; overflow-y: auto; position: relative; }
+.seq { flex: 1; overflow-y: auto; position: relative; }
 .rows {
-  position: relative; padding: 6px 0 14px;
+  position: relative; padding: 6px 0 14px; min-height: 100%;
   background-image:
     linear-gradient(var(--line), var(--line)), linear-gradient(var(--line), var(--line)),
     linear-gradient(var(--line), var(--line)), linear-gradient(var(--line), var(--line));
   background-size: 1px 100%; background-repeat: no-repeat;
   background-position: 12.5% 0, 37.5% 0, 62.5% 0, 87.5% 0;
 }
-.row { position: relative; height: 38px; cursor: pointer; opacity: 0.42; transition: opacity .15s; }
-.row.past { opacity: 0.8; }
+.row { position: relative; height: 36px; cursor: pointer; opacity: 0.6; transition: opacity .15s; }
+.row.past { opacity: 0.86; }
 .row.current { opacity: 1; background: color-mix(in srgb, var(--harness) 8%, transparent); }
-.row .arrow { position: absolute; top: 24px; height: 2px; background: currentColor; }
+.row .arrow { position: absolute; top: 23px; height: 2px; background: currentColor; }
 .row .arrow::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
 .row .arrow.right::after { right: -2px; border-left-color: currentColor; border-right: 0; }
 .row .arrow.left::after { left: -2px; border-right-color: currentColor; border-left: 0; }
-.row .lbl { position: absolute; top: 4px; font: 500 0.7rem var(--font-mono); white-space: nowrap; text-align: center; transform: translateX(-50%); }
-.row .ms { position: absolute; right: 6px; top: 12px; font: 0.64rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .lbl { position: absolute; top: 3px; font: 500 0.68rem var(--font-mono); white-space: nowrap; text-align: center; transform: translateX(-50%); }
+.row .ms { position: absolute; right: 8px; top: 11px; font: 0.7rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
 .row .ms.slow { color: var(--model); font-weight: 500; }
-.row .pill { position: absolute; top: 8px; left: 37.5%; transform: translateX(-50%); font: 500 0.68rem var(--font-mono); padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; background: var(--surface); white-space: nowrap; max-width: 72%; }
+.row .pill { position: absolute; top: 7px; left: 37.5%; transform: translateX(-50%); font: 500 0.68rem var(--font-mono); padding: 2px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); background: var(--surface); white-space: nowrap; max-width: 68%; overflow: hidden; text-overflow: ellipsis; }
 .row.self-fail .pill { background: var(--tint-fail); }
 .row.self-pass .pill { background: var(--tint-pass); }
 .c-C { color: var(--customer); } .c-H { color: var(--harness); } .c-M { color: var(--model); } .c-S { color: var(--system); }
 .c-fail { color: var(--fail); } .c-pass { color: var(--pass); }
 
-/* Inspector */
-.tokens { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
-.tokens .bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--sunken); }
-.tokens .bar .t { background: var(--harness); } .tokens .bar .r { background: var(--model); opacity: 0.55; }
-.tokens .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font: 0.74rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.tokens .legend b { color: var(--ink); font-weight: 500; }
-.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-pre.json { margin: 0; padding: 12px 14px; font: 0.76rem/1.55 var(--font-mono); overflow: auto; max-height: 60vh; white-space: pre-wrap; word-break: break-word; background: var(--sunken); border-radius: 0 0 10px 10px; tab-size: 2; }
-.json .k { color: var(--key); } .json .s { color: var(--str); } .json .n { color: var(--num); } .json .hl { background: color-mix(in srgb, var(--harness) 18%, transparent); border-radius: 3px; }
-.inspect-note { font-size: 0.8rem; color: var(--muted); padding: 8px 14px 0; }
+/* Right panel: wire inspector with progressive disclosure */
+.inspector { container-type: inline-size; }
+.inspector-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; background: transparent; }
+.drawer-btn {
+  font: 500 0.76rem var(--font-body); padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--sunken); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.drawer-btn:hover { border-color: var(--accent-line); color: var(--ink); }
+.drawer-btn[aria-expanded="true"] { border-color: var(--accent-line); background: var(--accent-tint); color: var(--ink); }
 
-/* Schema affordance */
-.schema { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
-.schema .against { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--muted); }
-.chip { font: 500 0.76rem var(--font-mono); padding: 3px 9px; border-radius: 5px; border: 1px dashed var(--harness); color: var(--harness); background: var(--tint-harness); cursor: help; }
-.fields { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-.fields th { text-align: left; font: 600 0.66rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 0 8px 4px 0; }
+.otel-box { padding: 16px 20px; border-bottom: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; gap: 10px; font: 0.76rem/1.55 var(--font-mono); color: var(--muted); flex-shrink: 0; }
+.otel-box[hidden], .tokens[hidden], .schema[hidden], .wire-bar[hidden] { display: none !important; }
+.otel-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; }
+.otel-grid dt { color: var(--muted); }
+.otel-grid dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.otel-grid dd.tp { color: var(--str); }
+.otel-kind { font-size: 0.63rem; padding: 1px 5px; border-radius: 3px; background: var(--tint-model); color: var(--model); margin-left: 6px; }
+.otel-attrs { display: flex; flex-wrap: wrap; gap: 4px 6px; padding-top: 2px; }
+.otel-attr { background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); font-size: 0.68rem; }
+.otel-attr i { font-style: normal; color: var(--key); }
+
+.tokens { padding: 16px 20px; border-bottom: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+.tokens .bar { display: flex; height: 12px; border-radius: 4px; overflow: hidden; background: var(--sunken); }
+.tokens .bar .t { background: var(--accent); } .tokens .bar .r { background: var(--model); opacity: 0.55; }
+.tokens .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font: 0.78rem var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tokens .legend b { color: var(--ink); font-weight: 500; }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.schema { padding: 16px 20px; border-bottom: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+.schema .against { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--muted); }
+.chip { font: 500 0.72rem var(--font-mono); padding: 2px 8px; border-radius: 5px; border: 1px dashed var(--harness); color: var(--harness); background: var(--tint-harness); cursor: help; }
+.fields { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.fields th { text-align: left; font: 500 0.72rem var(--font-body); color: var(--muted); padding: 0 8px 8px 0; }
 .fields td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
 .fields td.f { font-family: var(--font-mono); }
-.fields td.f .rule { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; margin-top: 2px; max-width: 34ch; }
+.fields td.f .rule { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.72rem; margin-top: 1px; max-width: 32ch; }
 .fields td.v { font-family: var(--font-mono); color: var(--str); }
 .fields td.v .item { white-space: nowrap; }
-.fields td.v .src-of { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; white-space: normal; margin-top: 2px; }
-.fields td.r { color: var(--muted); }
+.fields td.v .src-of { display: block; font-family: var(--font-body); color: var(--muted); font-size: 0.72rem; white-space: normal; margin-top: 1px; }
 .fields td:last-child { white-space: nowrap; }
 .fields tr[data-tip] { cursor: help; }
 .fields tr[data-tip]:hover td, .fields tr[data-tip]:focus-within td { background: var(--sunken); }
-.ok { font: 600 0.7rem var(--font-mono); color: var(--pass); } .bad { font: 600 0.7rem var(--font-mono); color: var(--fail); }
+.ok { font: 500 0.74rem var(--font-body); color: var(--pass); } .bad { font: 500 0.74rem var(--font-body); color: var(--fail); }
 .tablewrap { overflow-x: auto; }
-/* When the inspector itself is narrow, each table row becomes a small stacked card. */
-.inspector { container-type: inline-size; }
-@container (max-width: 520px) {
+@container (max-width: 480px) {
   .fields thead { display: none; }
-  .fields tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .fields tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--line); }
   .fields td { border-top: 0; padding: 0; }
   .fields td.f { grid-column: 1; }
   .fields td.res { grid-column: 2; grid-row: 1; text-align: right; }
   .fields td.v { grid-column: 1 / -1; }
-  .fields td.v[data-label]::before { content: attr(data-label) ": "; font-family: var(--font-body); color: var(--muted); font-size: 0.74rem; }
+  .fields td.v[data-label]::before { content: attr(data-label) ": "; font-family: var(--font-body); color: var(--muted); font-size: 0.72rem; }
   .fields td.v .item { white-space: normal; overflow-wrap: anywhere; }
 }
+
+.wire-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: transparent; font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
+.wire-bar .wire-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.wire-btn { font: 500 0.76rem var(--font-body); padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--sunken); color: var(--ink); cursor: pointer; }
+.wire-btn:hover { border-color: var(--harness); color: var(--harness); }
+
+pre.json { flex: 1; margin: 0; padding: 16px 20px; font: 0.74rem/1.6 var(--font-mono); white-space: pre-wrap; word-break: break-word; background: transparent; tab-size: 2; }
+pre.json[hidden] { display: none !important; }
+.json .k { color: var(--key); } .json .s { color: var(--str); } .json .n { color: var(--num); } .json .hl { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent-line); border-radius: 3px; }
+
 .row[data-tip] .pill { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
-#tip { position: fixed; z-index: 50; max-width: min(440px, calc(100vw - 32px)); max-height: 60vh; overflow: auto; background: var(--surface); border: 1px solid var(--harness); border-radius: 8px; box-shadow: 0 8px 28px color-mix(in srgb, var(--ink) 18%, transparent); padding: 10px 12px; font: 0.74rem/1.5 var(--font-mono); pointer-events: none; }
-#tip h4 { margin: 0 0 6px; font: 600 0.7rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--harness); }
+#tip { position: fixed; z-index: 50; max-width: min(440px, calc(100vw - 32px)); max-height: 60vh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%); box-shadow: inset 0 1px 0 var(--glass-highlight), 0 12px 36px var(--glass-shadow); padding: 16px 20px; font: 0.78rem/1.6 var(--font-mono); pointer-events: none; }
+#tip h4 { margin: 0 0 10px; font: 500 0.82rem var(--font-body); color: var(--ink); }
 #tip pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
 
-footer { color: var(--muted); font-size: 0.8rem; max-width: 90ch; }
-footer code { font-family: var(--font-mono); font-size: 0.78rem; }
-
-@media (max-width: 1100px) {
+@media (max-width: 1120px) {
   .main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .chatpanel { grid-column: 1 / -1; order: -1; }
-  .chat { max-height: 30vh; }
+  .chatpanel { grid-column: 1 / -1; order: -1; height: auto; max-height: 28vh; }
 }
 @media (max-width: 720px) {
   .main { grid-template-columns: minmax(0, 1fr); }
-  .stage { grid-template-columns: 1fr; }
-  .lat { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; font: 0.8rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.lat b { color: var(--ink); font-weight: 500; }
-.lat .slow b { color: var(--model); }
-.src { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); align-items: baseline; }
-.src .h { grid-column: 1 / -1; font: 600 0.68rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
-.src a { font-family: var(--font-mono); font-size: 0.76rem; color: var(--harness); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--harness) 40%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
-.src a:hover { text-decoration-color: var(--harness); }
-.stage > * { min-width: 0; }
-.controls { grid-row: auto; grid-column: 1; align-items: stretch; }
+  .panel { height: auto; max-height: 58vh; }
+  .stage-top { grid-template-columns: 1fr; }
+  .stage p { min-height: 0; }
+  .controls { align-items: stretch; }
   .btns button { flex: 1; }
-  .seq { max-height: 50vh; }
-  .lanes div small { font-size: 0.58rem; }
-  .lanes div { font-size: 0.68rem; }
-  .row .lbl { font-size: 0.62rem; }
 }
 @media (prefers-reduced-motion: reduce) { .row { transition: none; } }
 </style>
@@ -255,58 +299,76 @@ footer code { font-family: var(--font-mono); font-size: 0.78rem; }
   </section>
 
   <section class="stage" aria-live="polite">
-    <div class="stepno"><span id="journey"></span><span id="stepno"></span><span id="tag"></span></div>
-    <h2 id="title"></h2>
-    <p id="text"></p>
-    <div class="lat" id="lat"></div>
-    <div class="src" id="src"></div>
-    <div class="controls">
-      <div class="btns">
-        <button id="prev" type="button">Back</button>
-        <button id="next" type="button" class="primary">Next step</button>
+    <div class="stage-top">
+      <div class="stage-copy">
+        <div class="stepno"><span id="journey"></span><span id="stepno"></span><span id="tag"></span></div>
+        <h2 id="title"></h2>
+        <p id="text"></p>
       </div>
-      <div class="hint">Arrow keys also work</div>
+      <div class="controls">
+        <div class="btns">
+          <button id="prev" type="button">Back</button>
+          <button id="next" type="button" class="primary">Next step</button>
+        </div>
+        <div class="hint">Arrow keys also work</div>
+      </div>
     </div>
     <div class="scrub">
       <input id="scrub" type="range" min="0" value="0" aria-label="Step">
       <div class="marks" id="marks"></div>
     </div>
+    <div class="stage-foot">
+      <div class="lat" id="lat"></div>
+      <div class="src" id="src"></div>
+    </div>
   </section>
 
   <div class="main">
     <section class="panel chatpanel">
-      <h3>What the customer sees</h3>
+      <div class="panel-head">
+        <h3>What the customer sees</h3>
+        <span class="panel-meta" id="chatMeta"></span>
+      </div>
       <div class="chat" id="chat"></div>
     </section>
 
     <section class="panel">
+      <div class="panel-head">
+        <h3>Trace sequence</h3>
+        <span class="panel-meta" id="seqMeta"></span>
+      </div>
+      <div class="lanes">
+        <div class="C">Customer<small>simulated</small></div>
+        <div class="H">Custom harness<small>Kris' harness</small></div>
+        <div class="M">Model API<small>LLM_1</small></div>
+        <div class="S">Customer system<small>mock HTTP API</small></div>
+      </div>
       <div class="seq" id="seq">
-        <div class="lanes">
-          <div class="C">Customer<small>simulated</small></div>
-          <div class="H">Custom harness<small>Kris' harness</small></div>
-          <div class="M">Model API<small>LLM_1</small></div>
-          <div class="S">Customer system<small>mock HTTP API</small></div>
-        </div>
         <div class="rows" id="rows"></div>
       </div>
     </section>
 
     <section class="panel inspector">
-      <h3>On the wire</h3>
-      <div class="tokens" id="tokens" hidden>
-        <div class="bar"><span class="t" id="barT"></span><span class="r" id="barR"></span></div>
-        <div class="legend">
-          <span><i class="sw" style="background:var(--harness)"></i>tool definitions <b id="tokT"></b></span>
-          <span><i class="sw" style="background:var(--model);opacity:.55"></i>everything else <b id="tokR"></b></span>
-          <span>input tokens <b id="tokAll"></b></span>
-        </div>
+      <div class="panel-head">
+        <h3>On the wire</h3>
+        <button type="button" class="drawer-btn" id="otelBtn" aria-expanded="false" hidden></button>
       </div>
-      <div class="schema" id="schema" hidden></div>
-      <p class="inspect-note" id="note" hidden></p>
-      <pre class="json" id="json"></pre>
+      <div class="inspector-body" id="inspectorBody">
+        <div class="otel-box" id="otelBox" hidden></div>
+        <div class="tokens" id="tokens" hidden>
+          <div class="bar"><span class="t" id="barT"></span><span class="r" id="barR"></span></div>
+          <div class="legend">
+            <span><i class="sw" style="background:var(--accent)"></i>tool definitions <b id="tokT"></b></span>
+            <span><i class="sw" style="background:var(--model);opacity:.55"></i>everything else <b id="tokR"></b></span>
+            <span>input tokens <b id="tokAll"></b></span>
+          </div>
+        </div>
+        <div class="schema" id="schema" hidden></div>
+        <div class="wire-bar" id="wireBar" hidden></div>
+        <pre class="json" id="json"></pre>
+      </div>
     </section>
   </div>
-
 </div>
 
 <div id="tip" role="tooltip" hidden></div>
@@ -316,9 +378,10 @@ const SOURCE_BASE = "https://github.com/kkang132/harness-internals/blob/main/"; 
 const LANE_X = { C: 12.5, H: 37.5, M: 62.5, S: 87.5 };
 const $ = (id) => document.getElementById(id);
 let ch = 0, step = 0;
+let otelOpen = false, fullSchemas = false, fullThinking = false, rawTableJson = false, rawToolString = false;
 
-// Latency formatting, and chat clock times: the chat starts at 10:20:00 and every bubble is
-// stamped with the real time elapsed since then in the recorded run.
+// Chat clock times: the chat starts at 10:20:00 and every bubble is stamped with the real time
+// elapsed since then in the recorded run.
 const CHAT_START = { h: 10, m: 20, s: 0 };
 function fmtMs(ms) {
   if (ms < 1) return "<1 ms";
@@ -338,14 +401,13 @@ function highlight(obj) {
     .replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span class="k">$1</span>$2')
     .replace(/(:\s*|\[\s*|,\s*|^\s*)("(?:[^"\\]|\\.)*")/gm, '$1<span class="s">$2</span>')
     .replace(/(:\s*)(-?\d+(?:\.\d+)?|true|false|null)\b/g, '$1<span class="n">$2</span>')
-    .replace(/(<span class="k">"(?:customer_id|Idempotency-Key|offer_id|added_by_harness|tool_use|is_error|tools)"<\/span>)/g, '<span class="hl">$1</span>');
+    .replace(/(<span class="k">"(?:customer_id|Idempotency-Key|offer_id|traceparent|trace_id|span_id|parent_span_id|added_by_harness|tool_use|is_error|tools)"<\/span>)/g, '<span class="hl">$1</span>');
 }
 
-// The schema a step validates against: its own, or the next check step's (for the tool_use step).
 function schemaFor(c, i) {
   const b = c.beats[i];
   if (b.schema) return { schema: b.schema, fields: b.fields, tool: b.raw.tool };
-  if (b.label.startsWith("tool_use:")) {
+  if (b.label.startsWith("tool_use") || b.label.startsWith("verify:")) {
     const nxt = c.beats.slice(i + 1).find((x) => x.schema);
     if (nxt) return { schema: nxt.schema, fields: nxt.fields, tool: nxt.raw.tool };
   }
@@ -358,7 +420,9 @@ function showTip(el) {
   const t = tips[+el.dataset.tip];
   if (!t) return;
   const tip = $("tip");
-  tip.innerHTML = `<h4>${esc(t.title)}</h4><pre class="json">${highlight(t.obj)}</pre>`;
+  tip.innerHTML = typeof t.obj === "string"
+    ? `<h4>${esc(t.title)}</h4><pre>${esc(t.obj)}</pre>`
+    : `<h4>${esc(t.title)}</h4><pre class="json">${highlight(t.obj)}</pre>`;
   tip.hidden = false;
   const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
   let x = Math.min(window.innerWidth - w - 16, Math.max(16, r.left));
@@ -374,21 +438,31 @@ window.addEventListener("scroll", hideTip, true);
 
 function tone(b) {
   if (b.tone === "fail") return ["fail", "check failed"];
-  if (b.tone === "pass") return ["pass", "check passed"];
-  if (b.tone === "skill" || b.tone === "inject") return ["harness", "harness"];
-  if (b.lane[0] === "M") return ["model", "model output"];
+  if (b.tone === "pass") return ["pass", "deterministic check"];
+  if (b.tone === "skill") return ["harness", "skill scope"];
+  if (b.tone === "inject") return ["harness", "session injection"];
+  if (b.tone === "model" || b.lane[0] === "M") return ["model", "model output"];
   if (b.lane[1] === "M") return ["model", "sent to model"];
-  return ["harness", "harness"];
+  return ["harness", "harness step"];
+}
+
+function shortSpanName(name) {
+  const s = String(name || "");
+  if (s.startsWith("gen_ai.execute_tool")) return "execute_tool";
+  if (s.startsWith("invoke_agent")) return "invoke_agent";
+  return s.replace(/^(?:gen_ai|harness)\./, "");
 }
 
 function buildChapters() {
-  $("chapters").innerHTML = DATA.map((c, i) =>
-    `<button type="button" data-i="${i}" aria-pressed="${i === ch}">
-      <span class="jn">Journey ${i + 1}</span>
+  $("chapters").innerHTML = DATA.map((c, i) => `
+    <button type="button" data-i="${i}" aria-pressed="${i === ch}">
+      <span class="jtop"><span>Journey ${i + 1}</span><span>${c.beats.length} steps</span></span>
       <span class="jt">${esc(c.name)}</span>
-      <span class="jsteps">${c.beats.length} harness steps</span>
-      ${c.stats ? `<span class="jstats"><span><b>pass@1</b> ${c.stats.pass_at_1.toFixed(2)}</span><span><b>pass^${c.stats.n}</b> ${c.stats.pass_hat_n.toFixed(2)}</span><span><b>p50 cost to resolve</b> $${c.stats.p50_cost_usd.toFixed(3)}</span><span>n = ${c.stats.n} runs</span></span>` : ""}</button>`).join("");
-  $("chapters").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => openChapter(+b.dataset.i, true)));
+      ${c.sub ? `<span class="js">${esc(c.sub)}</span>` : ""}
+      ${c.fault ? `<span class="jf">${esc(c.fault)}</span>` : ""}
+      ${c.stats ? `<span class="jstats" title="Evaluated over n = ${c.stats.n} live runs"><span><b>pass@1</b> ${c.stats.pass_at_1.toFixed(2)}</span><span><b>pass^${c.stats.n}</b> ${c.stats.pass_hat_n.toFixed(2)}</span><span><b>p50</b> $${c.stats.p50_cost_usd.toFixed(3)}</span></span>` : ""}
+    </button>`).join("");
+  $("chapters").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => openChapter(+b.dataset.i, 0, true)));
 }
 
 function msLabel(b) {
@@ -414,47 +488,109 @@ function buildRows() {
   $("rows").querySelectorAll(".row").forEach((r) => r.addEventListener("click", () => go(+r.dataset.i)));
   $("scrub").max = c.beats.length - 1;
   $("marks").innerHTML = c.beats.map((b, i) =>
-    b.tone === "fail" || b.tone === "skill" ? `<i class="${b.tone}" style="left:${(100 * i) / (c.beats.length - 1)}%"></i>` : "").join("");
+    b.tone === "fail" || b.tone === "skill" ? `<i class="${b.tone}" style="left:${(100 * i) / Math.max(1, c.beats.length - 1)}%"></i>` : "").join("");
 }
 
-function go(i) {
-  const c = DATA[ch];
-  step = Math.max(0, Math.min(c.beats.length - 1, i));
-  const b = c.beats[step];
-  const [cls, label] = tone(b);
-  $("journey").textContent = `Journey ${ch + 1}`;
-  $("lat").innerHTML = `<span class="${b.lat_ms >= 500 ? "slow" : ""}">Step latency <b>${fmtMs(b.lat_ms)}</b></span><span>Elapsed <b>${fmtMs(b.cum_ms)}</b></span><span>Chat clock <b>${clock(b.cum_ms)}</b></span>`;
-  $("stepno").textContent = `Step ${step + 1} of ${c.beats.length}`;
-  $("src").innerHTML = (b.src || []).length
-    ? `<span class="h">In the code</span>` + b.src.map((x) => `<a href="${SOURCE_BASE}${x.file}${SOURCE_BASE.startsWith("http") ? `#L${x.line}` : ""}" target="_blank" rel="noopener">${esc(x.file)}:${x.line}</a><span>${esc(x.what)}</span>`).join("")
-    : "";
-  $("tag").innerHTML = `<span class="tag ${cls}">${label}</span>`;
-  $("title").textContent = b.title;
-  $("text").textContent = b.text;
-  $("json").innerHTML = highlight(b.raw);
-  $("scrub").value = step;
-  $("prev").disabled = step === 0;
-  $("next").disabled = step === c.beats.length - 1;
+function renderOtel(b) {
+  const btn = $("otelBtn"), box = $("otelBox");
+  if (!b.span) {
+    btn.hidden = true;
+    box.hidden = true;
+    return;
+  }
+  btn.hidden = false;
+  btn.setAttribute("aria-expanded", String(otelOpen));
+  btn.textContent = `OTel · ${shortSpanName(b.span.name)} ${otelOpen ? "▾" : "▸"}`;
+  if (!otelOpen) {
+    box.hidden = true;
+    return;
+  }
+  const parentLabel = b.span.parent_span_id ? b.span.parent_span_id : "root";
+  const attrs = Object.entries(b.span.attributes || {});
+  box.hidden = false;
+  box.innerHTML = `
+    <dl class="otel-grid">
+      <dt>span</dt><dd><b>${esc(b.span.name)}</b> (${fmtMs(b.span.duration_ms || 0)})<span class="otel-kind">${esc(b.span.kind || "INTERNAL")}</span></dd>
+      <dt>span_id</dt><dd>${esc(b.span.span_id)} · parent ${esc(parentLabel)}</dd>
+      <dt>traceparent</dt><dd class="tp">${esc(b.span.traceparent)}</dd>
+    </dl>
+    ${attrs.length ? `<div class="otel-attrs">${attrs.map(([k, v]) => `<span class="otel-attr"><i>${esc(k)}</i>=${esc(JSON.stringify(v))}</span>`).join("")}</div>` : ""}`;
+}
 
-  if (b.tokens) {
-    const t = b.tokens.tools, all = b.tokens.input, r = all - t;
-    $("tokens").hidden = false;
-    $("barT").style.width = `${(100 * t) / all}%`;
-    $("barR").style.width = `${(100 * r) / all}%`;
-    $("tokT").textContent = t.toLocaleString();
-    $("tokR").textContent = r.toLocaleString();
-    $("tokAll").textContent = all.toLocaleString();
-    $("note").hidden = false;
-    $("note").textContent = "The full request body. Highlighted: the tool definitions, resent on every call.";
-  } else {
-    $("tokens").hidden = true;
-    $("note").hidden = true;
+function renderWire(c, b) {
+  const sc = schemaFor(c, step);
+  const actions = [];
+  let note = "";
+  let viewObj = b.raw;
+  let hideJson = false;
+
+  // 1. Model request: summarize 200-line tool schemas by default so messages stay above the fold.
+  if (b.tokens && b.raw && Array.isArray(b.raw.tools)) {
+    const n = b.raw.tools.length;
+    note = fullSchemas ? `Showing ${n} full JSON schemas` : `${n} tool schemas hidden`;
+    actions.push({
+      id: "toggleSchemas",
+      label: fullSchemas ? `Hide ${n} schemas` : `Show ${n} schemas`,
+      onClick: () => { fullSchemas = !fullSchemas; renderWire(c, b); },
+    });
+    if (!fullSchemas) {
+      viewObj = { ...b.raw, tools: b.raw.tools.map((t) => t.name) };
+    }
   }
 
-  const sc = schemaFor(c, step);
+  // 2. Model response with chain-of-thought thinking: collapse reasoning text by default.
+  if (b.raw && Array.isArray(b.raw.content) && b.raw.content.some((x) => x && x.type === "thinking")) {
+    actions.push({
+      id: "toggleThinking",
+      label: fullThinking ? "Hide model thinking" : "Show model thinking",
+      onClick: () => { fullThinking = !fullThinking; renderWire(c, b); },
+    });
+    if (!fullThinking) {
+      viewObj = {
+        ...viewObj,
+        content: viewObj.content.map((x) => x && x.type === "thinking" ? { type: "thinking", thinking: "<collapsed>" } : x),
+      };
+    }
+  }
+
+  // 3. Tool result with stringified JSON: pretty-print parsed object by default.
+  if (b.raw && b.raw.type === "tool_result" && typeof b.raw.content === "string" && b.raw.content.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(b.raw.content);
+      actions.push({
+        id: "toggleToolStr",
+        label: rawToolString ? "Format JSON content" : "Raw wire string",
+        onClick: () => { rawToolString = !rawToolString; renderWire(c, b); },
+      });
+      if (!rawToolString) viewObj = { ...viewObj, content: parsed };
+    } catch {}
+  }
+
+  // 4. Table steps (schema check / case-note fact-check): hide duplicate raw JSON unless requested.
+  const hasPrimaryTable = Boolean(b.table || b.schema);
+  if (hasPrimaryTable) {
+    actions.push({
+      id: "toggleTableJson",
+      label: rawTableJson ? "Hide raw JSON" : "Show raw JSON",
+      onClick: () => { rawTableJson = !rawTableJson; renderWire(c, b); },
+    });
+    if (!rawTableJson) hideJson = true;
+  }
+
+  const bar = $("wireBar");
+  if (note || actions.length) {
+    bar.hidden = false;
+    bar.innerHTML = `${note ? `<span>${esc(note)}</span>` : ""}${actions.length ? `<span class="wire-actions">${actions.map((a) => `<button type="button" class="wire-btn" id="${a.id}">${esc(a.label)}</button>`).join("")}</span>` : ""}`;
+    actions.forEach((a) => $(a.id).addEventListener("click", a.onClick));
+  } else {
+    bar.hidden = true;
+  }
+
+  $("json").hidden = hideJson;
+  if (!hideJson) $("json").innerHTML = highlight(viewObj);
+
   if (b.table) {
     $("schema").hidden = false;
-    // rows: [field, model wrote, truth, source of truth, result]
     $("schema").innerHTML = `<div class="tablewrap"><table class="fields">
       <thead><tr><th>Field</th><th>Model wrote</th><th>Truth</th><th>Result</th></tr></thead>
       <tbody>${b.table.rows.map(([field, wrote, truth, source, result]) => `<tr>
@@ -468,9 +604,8 @@ function go(i) {
     const isCheck = Boolean(b.schema);
     $("schema").hidden = false;
     $("schema").innerHTML = `
-      <div class="against">${isCheck ? "Validated against" : "Will be checked against"}
-        <span class="chip" tabindex="0" data-tip="${whole}">${esc(sc.tool)}.input_schema</span>
-        <span>hover for the full schema</span></div>
+      <div class="against">${isCheck ? "Validated against" : "Checked next against"}
+        <span class="chip" tabindex="0" data-tip="${whole}">${esc(sc.tool)}.input_schema</span></div>
       <div class="tablewrap"><table class="fields">
         <thead><tr><th>Field and rule</th><th>Model sent</th>${isCheck ? "<th>Result</th>" : ""}</tr></thead>
         <tbody>${sc.fields.map((f) => {
@@ -486,10 +621,53 @@ function go(i) {
   } else {
     $("schema").hidden = true;
   }
+}
+
+function go(i) {
+  const c = DATA[ch];
+  step = Math.max(0, Math.min(c.beats.length - 1, i));
+  const b = c.beats[step];
+  const [cls, label] = tone(b);
+  $("journey").textContent = `Journey ${ch + 1}`;
+  $("stepno").textContent = `Step ${step + 1} of ${c.beats.length}`;
+  $("tag").innerHTML = `<span class="tag ${cls}">${esc(label)}</span>`;
+  $("title").textContent = b.title;
+  $("text").textContent = b.text;
+  $("lat").innerHTML = `<span class="${b.lat_ms >= 500 ? "slow" : ""}">Latency <b>${fmtMs(b.lat_ms)}</b></span><span>Elapsed <b>${fmtMs(b.cum_ms)}</b></span><span>Clock <b>${clock(b.cum_ms)}</b></span>`;
+  $("src").innerHTML = (b.src || []).length
+    ? `<span class="h">Code</span>` + b.src.map((x) => {
+        const shortFile = x.file.split("/").pop();
+        const tip = tipId(`${x.file}:${x.line}`, x.what);
+        return `<a href="${SOURCE_BASE}${x.file}${SOURCE_BASE.startsWith("http") ? `#L${x.line}` : ""}" data-tip="${tip}" target="_blank" rel="noopener">${esc(shortFile)}:${x.line}</a>`;
+      }).join("")
+    : "";
+
+  $("scrub").value = step;
+  $("prev").disabled = step === 0;
+  $("next").disabled = step === c.beats.length - 1;
+
+  const customerLabel = c.customer || "Sam";
+  $("chatMeta").textContent = customerLabel;
+  $("seqMeta").textContent = `${c.beats.length} steps${c.span_count ? ` · ${c.span_count} spans` : ""}`;
+
+  if (b.tokens) {
+    const t = b.tokens.tools, all = Math.max(1, b.tokens.input), r = Math.max(0, all - t);
+    $("tokens").hidden = false;
+    $("barT").style.width = `${(100 * t) / all}%`;
+    $("barR").style.width = `${(100 * r) / all}%`;
+    $("tokT").textContent = t.toLocaleString();
+    $("tokR").textContent = r.toLocaleString();
+    $("tokAll").textContent = b.tokens.input.toLocaleString();
+  } else {
+    $("tokens").hidden = true;
+  }
+
+  renderOtel(b);
+  renderWire(c, b);
 
   const lines = c.chat.slice(0, b.chat);
   $("chat").innerHTML = lines.length
-    ? lines.map((l, i) => `<div class="bubble ${l.who}${i === lines.length - 1 && (b.lane.includes("C")) ? " new" : ""}">${esc(l.text)}<span class="when">${l.who === "customer" ? "Sam" : "Agent"} · ${clock(l.t - c.beats[0].t)}</span></div>`).join("")
+    ? lines.map((l, idx) => `<div class="bubble ${l.who}${idx === lines.length - 1 && b.lane.includes("C") ? " new" : ""}">${esc(l.text)}<span class="when">${esc(l.who === "customer" ? customerLabel : "Agent")} · ${clock(l.t - c.beats[0].t)}</span></div>`).join("")
     : `<p class="empty">Nothing yet.</p>`;
   $("chat").scrollTop = $("chat").scrollHeight;
 
@@ -504,15 +682,19 @@ function go(i) {
   }
 }
 
-function openChapter(i, fromClick) {
+function openChapter(i, initialStep, fromClick) {
   ch = i;
   tips.length = 0;
   buildChapters();
   buildRows();
-  go(0);
+  go(initialStep || 0);
   if (fromClick) { try { history.replaceState(null, "", `#${DATA[i].id.toLowerCase()}`); } catch {} }
 }
 
+$("otelBtn").addEventListener("click", () => {
+  otelOpen = !otelOpen;
+  renderOtel(DATA[ch].beats[step]);
+});
 $("prev").addEventListener("click", () => go(step - 1));
 $("next").addEventListener("click", () => go(step + 1));
 $("scrub").addEventListener("input", (e) => go(+e.target.value));
@@ -522,9 +704,13 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft") { go(step - 1); e.preventDefault(); }
 });
 function fromHash() {
-  const h = location.hash.slice(1).toUpperCase();
+  const raw = location.hash.slice(1);
+  const [idPart, stepPart, flagPart] = raw.split(/[:/]/);
+  if (flagPart === "otel") otelOpen = true;
+  const h = (idPart || "").toUpperCase();
   const i = DATA.findIndex((c) => c.id === h);
-  openChapter(i >= 0 ? i : 0, false);
+  const s = stepPart ? Math.max(0, parseInt(stepPart, 10) - 1) : 0;
+  openChapter(i >= 0 ? i : 0, Number.isFinite(s) ? s : 0, false);
 }
 window.addEventListener("hashchange", fromHash);
 fromHash();

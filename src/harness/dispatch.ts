@@ -12,14 +12,33 @@
 import type { ToolResultBlock, ToolUseBlock } from "../llm/model-api.ts";
 import type { Skill } from "./skills.ts";
 import { EXECUTORS, TOOL_DEFINITIONS, type ToolContext, type ToolName } from "./tools.ts";
+import type { SpanAttributes } from "./trace.ts";
 import { validate } from "./validate.ts";
 
-export async function dispatch(block: ToolUseBlock, skill: Skill, ctx: ToolContext): Promise<ToolResultBlock> {
+// Each dispatch is one OpenTelemetry gen_ai.execute_tool span; HTTP calls made inside it carry
+// that span's traceparent.
+export function dispatch(block: ToolUseBlock, skill: Skill, ctx: ToolContext): Promise<ToolResultBlock> {
+  return ctx.trace.withSpan(
+    `gen_ai.execute_tool ${block.name}`,
+    { "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": block.name, "gen_ai.tool.call.id": block.id },
+    (span) => dispatchInSpan(block, skill, ctx, span.setAttributes),
+  );
+}
+
+async function dispatchInSpan(
+  block: ToolUseBlock,
+  skill: Skill,
+  ctx: ToolContext,
+  setAttributes: (a: SpanAttributes) => void,
+): Promise<ToolResultBlock> {
   const { trace } = ctx;
+  const started = performance.now();
   trace.emit({ kind: "tool_call", id: block.id, name: block.name, input: block.input });
   const result = (content: unknown, is_error: boolean): ToolResultBlock => {
     const text = typeof content === "string" ? content : JSON.stringify(content);
-    trace.emit({ kind: "tool_result", id: block.id, is_error, content: text });
+    const duration_ms = Math.round((performance.now() - started) * 10) / 10;
+    setAttributes({ "harness.is_error": is_error });
+    trace.emit({ kind: "tool_result", id: block.id, is_error, content: text, duration_ms });
     return { type: "tool_result", tool_use_id: block.id, content: text, ...(is_error ? { is_error } : {}) };
   };
 

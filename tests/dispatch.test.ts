@@ -107,6 +107,21 @@ describe("escalate_to_human", () => {
       expect(ctx.trace.events.some((e) => e.kind === "http")).toBe(false);
     });
   });
+  it("wraps each tool call in a span and sends its W3C traceparent on the HTTP call", async () => {
+    await withSystem({}, "C-1001", async (ctx) => {
+      await ctx.trace.withSpan("harness.turn", { "harness.turn": 1 }, async (turn) => {
+        await dispatch(use("get_plan", {}), ALL_SKILLS.retention, ctx);
+        const [span] = ctx.trace.spans.filter((s) => s.attributes["gen_ai.operation.name"] === "execute_tool");
+        expect(span?.name).toBe("gen_ai.execute_tool get_plan");
+        expect(span?.parent_span_id).toBe(turn.span_id);
+        expect(span?.traceparent).toBe(`00-${ctx.trace.trace_id}-${span?.span_id}-01`);
+        const http = ctx.trace.events.find((e) => e.kind === "http");
+        expect(http?.kind === "http" && http.traceparent).toBe(span?.traceparent);
+        expect(http?.span_id).toBe(span?.span_id);
+      });
+      expect(ctx.trace.events.every((e) => e.trace_id === ctx.trace.trace_id && e.span_id.length === 16)).toBe(true);
+    });
+  });
 });
 
 describe("foreignCustomerIds", () => {

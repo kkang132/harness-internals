@@ -99,13 +99,24 @@ async function call(
   const id = ctx.session.customer_id;
   ctx.trace.emit({ kind: "inject", field: "customer_id", value: id, source: "session (login), not the model" });
   const path = `/v1/customers/${encodeURIComponent(id)}${subpath}`;
+  // W3C Trace Context: the customer system can tie its logs to the tool span that called it.
+  const traceparent = ctx.trace.traceparent();
+  const t0 = performance.now();
   const res = await fetch(`${ctx.apiUrl}${path}`, {
     method,
-    headers: { "content-type": "application/json", ...extraHeaders },
+    headers: { "content-type": "application/json", traceparent, ...extraHeaders },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const parsed = (await res.json()) as unknown;
-  ctx.trace.emit({ kind: "http", method, path, status: res.status, idempotency_key: extraHeaders["idempotency-key"] });
+  ctx.trace.emit({
+    kind: "http",
+    method,
+    path,
+    status: res.status,
+    traceparent,
+    idempotency_key: extraHeaders["idempotency-key"],
+    duration_ms: Math.round((performance.now() - t0) * 10) / 10,
+  });
   return { status: res.status, body: parsed };
 }
 

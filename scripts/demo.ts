@@ -59,7 +59,14 @@ const file = `results/traces/${scenario.id}-${mode}-${Date.now()}.json`;
 writeFileSync(
   file,
   JSON.stringify(
-    { scenario: scenario.id, mode, checks, events: result.trace, systemEvents: result.system.events },
+    {
+      scenario: scenario.id,
+      mode,
+      checks,
+      spans: result.spans,
+      events: result.trace,
+      systemEvents: result.system.events,
+    },
     null,
     2,
   ),
