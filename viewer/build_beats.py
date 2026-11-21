@@ -163,6 +163,21 @@ def build(pattern, sid):
         schema=tools_by_name.get(e["name"], {}).get("input_schema"),
         fields=field_rows(tools_by_name.get(e["name"], {}).get("input_schema") or {}, e["input"]))
       beats.append(b); b = None
+      if not all(c["ok"] for c in pre):
+        # Rejected before execution: nothing is injected and nothing is sent. The problems go
+        # straight back to the model as an is_error tool_result.
+        beats[-1]["title"] = "Check 1 and 2: rejected before anything runs"
+        beats[-1]["text"] = (f"{'Exposure' if not pre[0]['ok'] else 'Schema'} check failed: "
+                     + "; ".join(c["detail"] for c in pre if not c["ok"])
+                     + ". The harness does not call the customer system. It turns the problems into an error result for the model.")
+        nxt = next((x for x in ev[j+1:] if x["kind"] == "tool_call"), None)
+        retry = nxt is not None and nxt["name"] == e["name"]
+        beats.append(dict(t=res["t"], lane=("H","M"), label="tool_result (is_error)", title="An error goes back as a result", src=SRC["tool_result"],
+          tone="fail",
+          text="Errors are results too. The model reads exactly what was wrong" + (f" and, in its next reply, calls {e['name']} again with the input fixed." if retry else " and decides what to do."),
+          raw={"type": "tool_result", "tool_use_id": res["id"], "content": res["content"], "is_error": True}))
+        i = j + 1
+        continue
       injects = [g for g in group if g["kind"] == "inject"]
       https = [g for g in group if g["kind"] == "http"]
       notes = [g for g in group if g["kind"] == "note"]
@@ -206,7 +221,9 @@ def build(pattern, sid):
     elif k == "record":
       rec = e["record"]
       beats.append(dict(t=beats[-1]["t"], lane=("H","M"), label="write case note", title="After the chat: the model writes a case note for the CRM", src=SRC["record"],
-        text="The customer already has their confirmation, and it rested on the plan change the customer system made and the model then read back. The case note is after-call work: a summary for the support team's CRM, written from the whole transcript once the chat is over. Structured outputs make the reply match a JSON schema.",
+        text=("The customer already has their confirmation, and it rested on the plan change the customer system made and the model then read back." if read_back(ev) else
+              "The customer already has their confirmation. This time the model confirmed from the accept call's reply and skipped reading the account back, so the journey's verify check fails.")
+             + " The case note is after-call work: a summary for the support team's CRM, written from the whole transcript once the chat is over. Structured outputs make the reply match a JSON schema.",
         raw={"output_config": {"format": {"type": "json_schema", "schema": {"customer_id": "string", "outcome": "cancelled | retained_with_offer | no_change", "offer_presented": "boolean", "summary": "string"}}}}))
       beats.append(dict(t=e["t"], lane=("M","H"), label="case note JSON", title="The model writes the case note", src=SRC["record_json"],
         tone="model",
@@ -252,15 +269,26 @@ def build(pattern, sid):
 # "spans" list. Each beat gets the span of the last event at or before its time, so the
 # viewer's OTel drawer can show span name, ids, traceparent and gen_ai.* attributes.
 # Older traces have neither, and the drawer stays hidden.
+# Did the model read the account back (get_plan) after the plan change was accepted?
+def read_back(ev):
+  accepted = False
+  for e in ev:
+    if e["kind"] == "http" and e["path"].endswith("/accept") and e["status"] == 200: accepted = True
+    if accepted and e["kind"] == "tool_call" and e["name"] == "get_plan": return True
+  return False
+
 def attach_spans(d, beats):
   spans = {s["span_id"]: s for s in d.get("spans", [])}
   timed = [(e["t"], e["span_id"]) for e in d["events"] if "span_id" in e]
   if not spans or not timed: return 0
   for b in beats:
-    sid = None
-    for t, s in timed:
-      if t > b["t"]: break
-      sid = s
+    # The event a beat was built from: the first one stamped at the beat's time (several
+    # events can share a timestamp), else the last one before it.
+    sid = next((s for t, s in timed if t == b["t"]), None)
+    if sid is None:
+      for t, s in timed:
+        if t > b["t"]: break
+        sid = s
     span = spans.get(sid)
     if span:
       b["span"] = {**span, "kind": "CLIENT" if span["name"] in ("gen_ai.chat", "gen_ai.case_record") else "INTERNAL"}
