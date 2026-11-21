@@ -176,7 +176,7 @@ def build(pattern, sid):
         beats.append(dict(t=((notes[0]["t"] if notes else https[n-1]["t"]) if n > 0 else (injects[-1]["t"] if injects else h["t"])), lane=("H","S"), label=f"{h['method']} {h['path'].replace('/v1/customers','…')}", title="Step 4: a real HTTP call" if n == 0 else "Retry with the same key", src=SRC["http"] if n == 0 else SRC["retry"],
           text=("The harness calls the customer system over HTTP. The URL carries the session's customer_id." if n == 0 else
                 "Same request, same Idempotency-Key. The customer system has seen this key, so it does not cancel again: it replays the result it stored the first time."),
-          raw={"request": {"method": h["method"], "path": h["path"], **({"headers": {"Idempotency-Key": h["idempotency_key"]}} if h.get("idempotency_key") else {})}}))
+          raw={"request": {"method": h["method"], "path": h["path"], **({"headers": {**({"traceparent": h["traceparent"]} if h.get("traceparent") else {}), **({"Idempotency-Key": h["idempotency_key"]} if h.get("idempotency_key") else {})}} if h.get("traceparent") or h.get("idempotency_key") else {})}}))
         beats.append(dict(t=h["t"], lane=("S","H"), label=f"HTTP {h['status']}" + ("  (replayed)" if replay else ""), title=("The reply is lost" if h["status"] >= 500 else ("The stored result comes back" if replay else "The customer system answers")),
           tone="fail" if h["status"] >= 500 else None,
         src=SRC["sys_lost"] if h["status"] >= 500 else (SRC["sys_replay"] if replay else SRC["sys_ok"]),
@@ -245,7 +245,26 @@ def build(pattern, sid):
     b["lat_ms"] = round(b["t"] - prev, 1)
     b["cum_ms"] = round(b["t"] - t0, 1)
     prev = b["t"]
-  return {"chat": chat, "beats": beats}
+  span_count = attach_spans(d, beats)
+  return {"chat": chat, "beats": beats, **({"span_count": span_count} if span_count else {})}
+
+# OpenTelemetry: traces recorded since spans were added carry span_id on every event and a
+# "spans" list. Each beat gets the span of the last event at or before its time, so the
+# viewer's OTel drawer can show span name, ids, traceparent and gen_ai.* attributes.
+# Older traces have neither, and the drawer stays hidden.
+def attach_spans(d, beats):
+  spans = {s["span_id"]: s for s in d.get("spans", [])}
+  timed = [(e["t"], e["span_id"]) for e in d["events"] if "span_id" in e]
+  if not spans or not timed: return 0
+  for b in beats:
+    sid = None
+    for t, s in timed:
+      if t > b["t"]: break
+      sid = s
+    span = spans.get(sid)
+    if span:
+      b["span"] = {**span, "kind": "CLIENT" if span["name"] in ("gen_ai.chat", "gen_ai.case_record") else "INTERNAL"}
+  return len(spans)
 
 from math import comb
 from statistics import median

@@ -93,7 +93,11 @@ async function worker() {
       });
       writeFileSync(
         `${outDir}/traces/${mode}-${s.id}-${run}.json`,
-        JSON.stringify({ checks, chat: r.chat, events: r.trace, systemEvents: r.system.events }, null, 2),
+        JSON.stringify(
+          { checks, chat: r.chat, spans: r.spans, events: r.trace, systemEvents: r.system.events },
+          null,
+          2,
+        ),
       );
     } catch (err) {
       rows.push({

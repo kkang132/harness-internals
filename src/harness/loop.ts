@@ -29,7 +29,7 @@ import { dispatch } from "./dispatch.ts";
 import { type CaseRecord, type Check, checkCaseRecord, enforceCaseRecord, writeCaseRecord } from "./record.ts";
 import { newSession, type Session } from "./session.ts";
 import { ALL_SKILLS, type Mode, type Skill, selectSkill, toolDefinitions } from "./skills.ts";
-import { type Timed, Trace, type TraceEvent } from "./trace.ts";
+import { type Span, type Timed, Trace, type TraceEvent } from "./trace.ts";
 
 export type RunConfig = {
   agentModel: string;
@@ -40,7 +40,7 @@ export type RunConfig = {
   maxStepsPerTurn: number;
   keepRequestBodies: boolean;
   toolDefinitionTokens: Record<string, number>;
-  onEvent?: (e: TraceEvent) => void;
+  onEvent?: (e: Timed<TraceEvent>) => void;
 };
 
 export const DEFAULT_CONFIG: Omit<RunConfig, "mode" | "toolDefinitionTokens"> = {
@@ -73,6 +73,7 @@ export type ConversationResult = {
   recordChecks: Check[];
   recordUsage: Usage | null; // the case-record call, billed like any other
   trace: Timed<TraceEvent>[];
+  spans: Span[]; // OpenTelemetry-shaped: one per turn, model call, tool call and case record
   stoppedBy: "customer_done" | "turn_limit" | "refusal" | "step_limit" | "escalated";
 };
 
@@ -90,16 +91,16 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
   let callNo = 0;
 
   try {
-    let customerText = input.opening;
-    turns: for (let turn = 0; turn < cfg.maxCustomerTurns; turn++) {
+    // One customer turn: call the model, run any tools, repeat until it answers in text.
+    // Returns why the conversation must stop, or null to carry on.
+    const runTurn = async (customerText: string): Promise<ConversationResult["stoppedBy"] | null> => {
       trace.emit({ kind: "customer", text: customerText });
       chat.push({ who: "customer", text: customerText });
       messages.push({ role: "user", content: customerText });
 
       for (let step = 0; ; step++) {
         if (step >= cfg.maxStepsPerTurn) {
-          stoppedBy = "step_limit";
-          break turns;
+          return "step_limit";
         }
         const skill = selectSkill(cfg.mode, session);
         if (skill.name !== lastSkill) {
@@ -114,30 +115,50 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
 
         const req = buildRequest(cfg, skill, messages);
         callNo++;
-        trace.emit({
-          kind: "request",
-          call: callNo,
-          skill: skill.name,
-          tools: skill.tools,
-          messages: messages.length,
-          ...(cfg.keepRequestBodies ? { body: structuredClone(req) } : {}),
-        });
-        const res = await createMessage(req);
-        const toolTokens = cfg.toolDefinitionTokens[skill.name] ?? 0;
-        calls.push({
-          skill: skill.name,
-          input_tokens: res.usage.input_tokens,
-          output_tokens: res.usage.output_tokens,
-          tool_definition_tokens: toolTokens,
-        });
-        trace.emit({
-          kind: "response",
-          call: callNo,
-          stop_reason: res.stop_reason,
-          input_tokens: res.usage.input_tokens,
-          output_tokens: res.usage.output_tokens,
-          tool_definition_tokens: toolTokens,
-        });
+        const res = await trace.withSpan(
+          "gen_ai.chat",
+          {
+            "gen_ai.operation.name": "chat",
+            "gen_ai.request.model": cfg.agentModel,
+            "harness.skill": skill.name,
+            "harness.call": callNo,
+          },
+          async (span) => {
+            trace.emit({
+              kind: "request",
+              call: callNo,
+              skill: skill.name,
+              tools: skill.tools,
+              messages: messages.length,
+              ...(cfg.keepRequestBodies ? { body: structuredClone(req) } : {}),
+            });
+            const callStart = performance.now();
+            const out = await createMessage(req);
+            const duration_ms = Math.round((performance.now() - callStart) * 10) / 10;
+            const toolTokens = cfg.toolDefinitionTokens[skill.name] ?? 0;
+            calls.push({
+              skill: skill.name,
+              input_tokens: out.usage.input_tokens,
+              output_tokens: out.usage.output_tokens,
+              tool_definition_tokens: toolTokens,
+            });
+            span.setAttributes({
+              "gen_ai.usage.input_tokens": out.usage.input_tokens,
+              "gen_ai.usage.output_tokens": out.usage.output_tokens,
+              "gen_ai.response.finish_reason": out.stop_reason ?? "unknown",
+            });
+            trace.emit({
+              kind: "response",
+              call: callNo,
+              stop_reason: out.stop_reason,
+              input_tokens: out.usage.input_tokens,
+              output_tokens: out.usage.output_tokens,
+              tool_definition_tokens: toolTokens,
+              duration_ms,
+            });
+            return out;
+          },
+        );
         for (const b of res.content) {
           if (b.type === "thinking" && typeof b.thinking === "string" && b.thinking.trim()) {
             trace.emit({ kind: "thinking", text: b.thinking.trim() });
@@ -148,8 +169,7 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
         messages.push({ role: "assistant", content: res.content });
 
         if (res.stop_reason === "refusal") {
-          stoppedBy = "refusal";
-          break turns;
+          return "refusal";
         }
         const toolUses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
         if (res.stop_reason === "tool_use" && toolUses.length > 0) {
@@ -164,6 +184,16 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
         const reply = textOf(res.content);
         trace.emit({ kind: "agent", text: reply });
         chat.push({ who: "agent", text: reply });
+        return null;
+      }
+    };
+
+    let customerText = input.opening;
+    for (let turn = 0; turn < cfg.maxCustomerTurns; turn++) {
+      // One harness.turn span per customer message; model and tool spans nest inside it.
+      const stop = await trace.withSpan("harness.turn", { "harness.turn": turn + 1 }, () => runTurn(customerText));
+      if (stop) {
+        stoppedBy = stop;
         break;
       }
 
@@ -191,23 +221,34 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
     let record: CaseRecord | null = null;
     let recordChecks: Check[] = [];
     let recordUsage: Usage | null = null;
-    try {
-      const written = await writeCaseRecord(cfg.agentModel, messages);
-      record = written.record;
-      recordUsage = written.usage;
-      recordChecks = checkCaseRecord(record, session, system);
-      const enforced = enforceCaseRecord(record, session);
-      if (enforced.customer_id !== record.customer_id) {
-        trace.emit({
-          kind: "note",
-          text: `case record customer_id overwritten: ${record.customer_id} -> ${enforced.customer_id}`,
-        });
-      }
-      record = enforced;
-    } catch (err) {
-      recordChecks = [{ name: "record parses", ok: false, detail: (err as Error).message }];
-    }
-    trace.emit({ kind: "record", record, checks: recordChecks });
+    await trace.withSpan(
+      "gen_ai.case_record",
+      { "gen_ai.operation.name": "chat", "gen_ai.request.model": cfg.agentModel },
+      async (span) => {
+        const recStart = performance.now();
+        try {
+          const written = await writeCaseRecord(cfg.agentModel, messages);
+          span.setAttributes({
+            "gen_ai.usage.input_tokens": written.usage.input_tokens,
+            "gen_ai.usage.output_tokens": written.usage.output_tokens,
+          });
+          recordUsage = written.usage;
+          recordChecks = checkCaseRecord(written.record, session, system);
+          const enforced = enforceCaseRecord(written.record, session);
+          if (enforced.customer_id !== written.record.customer_id) {
+            trace.emit({
+              kind: "note",
+              text: `case record customer_id overwritten: ${written.record.customer_id} -> ${enforced.customer_id}`,
+            });
+          }
+          record = enforced;
+        } catch (err) {
+          recordChecks = [{ name: "record parses", ok: false, detail: (err as Error).message }];
+        }
+        const duration_ms = Math.round((performance.now() - recStart) * 10) / 10;
+        trace.emit({ kind: "record", record, checks: recordChecks, duration_ms });
+      },
+    );
 
     return {
       session,
@@ -219,6 +260,7 @@ export async function runConversation(input: ConversationInput, cfg: RunConfig):
       recordChecks,
       recordUsage,
       trace: trace.events,
+      spans: trace.spans,
       stoppedBy,
     };
   } finally {

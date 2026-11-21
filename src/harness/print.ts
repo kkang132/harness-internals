@@ -34,7 +34,7 @@ export function printEvent(e: TraceEvent, opts: { raw?: boolean } = {}): void {
     case "response":
       console.log(
         c.cyan(
-          `  <- ${e.stop_reason}  input_tokens=${e.input_tokens} (tool definitions ~${e.tool_definition_tokens})  output_tokens=${e.output_tokens}`,
+          `  <- ${e.stop_reason}  input_tokens=${e.input_tokens} (tool definitions ~${e.tool_definition_tokens})  output_tokens=${e.output_tokens}${e.duration_ms !== undefined ? `  (${e.duration_ms}ms)` : ""}`,
         ),
       );
       break;
